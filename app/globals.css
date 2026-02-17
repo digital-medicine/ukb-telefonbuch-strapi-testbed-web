@@ -1,8 +1,15 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+ :root {
+  --background: #f5f6f8;
+  --foreground: #1a1d24;
+  --ink: #111318;
+  --ink-soft: #4a4f5c;
+  --accent: #1f6f5b;
+  --accent-soft: #dfeee9;
+  --card: #ffffff;
+  --card-border: #e4e6ea;
+  --muted: #7a808f;
 }
 
 @theme inline {
@@ -20,7 +27,334 @@
 }
 
 body {
-  background: var(--background);
+  background:
+    radial-gradient(900px 500px at 10% -10%, #e7eef6 0%, transparent 60%),
+    radial-gradient(700px 420px at 110% 0%, #e9f3ee 0%, transparent 55%),
+    linear-gradient(180deg, #f8f9fb 0%, #f5f6f8 55%, #f1f3f6 100%);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: "Avenir Next", "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+.page {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px;
+  color: var(--ink);
+}
+
+.page-title {
+  font-size: 34px;
+  margin: 0 0 6px;
+  color: var(--ink);
+  letter-spacing: 0.01em;
+  font-weight: 750;
+}
+
+.page-subtitle {
+  margin: 0 0 18px;
+  color: var(--ink-soft);
+}
+
+.directory {
+  max-width: 1100px;
+  margin: 28px auto 60px;
+  padding: 0 20px;
+}
+
+.directory-toolbar {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.4fr) repeat(3, minmax(140px, 1fr)) auto;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 18px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #ffffff;
+  border: 1px solid var(--card-border);
+  box-shadow: 0 10px 22px rgba(18, 24, 40, 0.06);
+}
+
+.directory-search {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #dfe2e7;
+  min-width: 220px;
+  background: #fff;
+}
+
+.directory-label {
+  display: grid;
+  gap: 6px;
+  font-size: 0.86rem;
+  color: var(--ink-soft);
+}
+
+.directory-select {
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid #dfe2e7;
+  background: #fff;
+  color: var(--ink);
+}
+
+.directory-count {
+  justify-self: end;
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+}
+
+.directory-error {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid #f3b;
+  color: #900;
+  background: #fff1f6;
+}
+
+.directory-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.person-card {
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  background: var(--card);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+  overflow: hidden;
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.person-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 22px 44px rgba(15, 23, 42, 0.12);
+}
+
+.person-summary {
+  list-style: none;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  cursor: pointer;
+}
+
+.person-summary::-webkit-details-marker {
+  display: none;
+}
+
+.person-head {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 14px;
+}
+
+.person-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #f2f3f5;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--card-border);
+}
+
+.person-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.person-avatar-fallback {
+  font-weight: 700;
+  font-size: 20px;
+  color: var(--accent);
+}
+
+.person-title {
+  display: grid;
+  gap: 4px;
+}
+
+.person-name {
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--ink);
+}
+
+.person-meta {
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+
+.person-toggle {
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.person-body {
+  padding: 10px 16px 18px;
+  border-top: 1px solid var(--card-border);
+  background: #fbfbfc;
+}
+
+.person-section-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.person-section h4 {
+  margin: 4px 0 8px;
+  font-size: 0.9rem;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.person-section ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.person-section li span:first-child {
+  color: var(--muted);
+}
+
+.person-section a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.person-section a:hover {
+  text-decoration: underline;
+}
+
+.empty {
+  opacity: 0.6;
+}
+
+.publications {
+  border-top: 1px dashed var(--card-border);
+  padding-top: 10px;
+}
+
+.pub-list {
+  display: grid;
+  gap: 10px;
+}
+
+.pub-item {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid var(--card-border);
+}
+
+.pub-title {
+  font-weight: 650;
+  margin-bottom: 4px;
+}
+
+.pub-meta {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin-bottom: 6px;
+}
+
+.pub-links {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  font-size: 0.9rem;
+}
+
+.pub-links a {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.pub-links a:hover {
+  color: var(--accent);
+}
+
+.pub-type {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #f1f4f5;
+  color: #3d4c52;
+  font-size: 0.8rem;
+}
+
+.pagination {
+  margin-top: 22px;
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  padding: 8px;
+  border-radius: 14px;
+  background: #ffffff;
+  border: 1px solid var(--card-border);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
+}
+
+.pagination-btn {
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid #dfe2e7;
+  background: #fff;
+  color: var(--ink);
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.pagination-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pagination-info {
+  color: var(--ink-soft);
+  font-size: 0.95rem;
+  padding: 0 6px;
+  white-space: nowrap;
+}
+
+.pagination {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+@media (max-width: 900px) {
+  .directory-toolbar {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .directory-count {
+    justify-self: start;
+  }
+}
+
+@media (max-width: 640px) {
+  .directory {
+    margin: 18px auto 40px;
+  }
+
+  .person-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .person-toggle {
+    align-self: flex-start;
+  }
 }
