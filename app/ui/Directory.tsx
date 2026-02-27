@@ -19,6 +19,31 @@ type Media = {
   alternativeText?: string | null;
   formats?: Record<string, MediaFormat> | null;
 };
+
+type Secretariat = {
+  id?: number | null;
+  documentId?: string | null;
+  Name?: string | null;
+  MailIdentifier?: string | null;
+  Email?: string | null;
+  Phone?: string | null;
+  Phones?: Phone[] | null;
+  Mail?: Mail[] | null;
+  Address?: Address[] | null;
+  Organizations?: OrganizationInfo[] | null;
+};
+
+type OrganizationInfo = {
+  id?: number | null;
+  documentId?: string | null;
+  Name?: string | null;
+  ShortName?: string | null;
+  AffiliationRole?: string | null;
+  AffiliationPrimary?: boolean | null;
+  LeadershipRoles?: string[] | null;
+  LeadershipPrimary?: boolean | null;
+};
+
 type Publication = {
   id?: number | null;
   Title?: string | null;
@@ -31,6 +56,7 @@ type Publication = {
   Pages?: string | null;
   URL?: string | null;
 };
+
 type PublicationLink = {
   id?: number | null;
   AuthorName?: string | null;
@@ -38,15 +64,19 @@ type PublicationLink = {
   IsCorresponding?: boolean | null;
   Publication?: Publication | null;
 };
+
 type Person = {
   id: number;
   Title?: string | null;
   Firstname?: string | null;
   Lastname?: string | null;
-  Phone?: Phone[] | null; // ✅ repeatable component
+  MailIdentifier?: string | null;
+  Phone?: Phone[] | null;
   Mail?: Mail[] | null;
   Address?: Address[] | null;
   EmployeePicture?: Media | null;
+  Secretariats?: Secretariat[] | null;
+  Organizations?: OrganizationInfo[] | null;
   Publications?: PublicationLink[] | null;
 };
 
@@ -88,8 +118,46 @@ function pickByLabel<T extends { Label?: string | null }>(
   return list[0] || null;
 }
 
-export default function Directory() {
-  const [q, setQ] = useState("");
+function formatSecretariatPreview(list: Secretariat[] | null | undefined) {
+  const entries = (list || []).slice(0, 2).map((s) => {
+    const name = s.Name || s.MailIdentifier || "(ohne Namen)";
+    const bits = [name];
+    if (s.Email) bits.push(s.Email);
+    if (s.Phone) bits.push(s.Phone);
+    return bits.join(", ");
+  });
+  if (!entries.length) return null;
+  const suffix = (list || []).length > 2 ? " …" : "";
+  return `${entries.join(" | ")}${suffix}`;
+}
+
+function formatOrgPreview(list: OrganizationInfo[] | null | undefined) {
+  const names = (list || [])
+    .map((o) => o.ShortName || o.Name)
+    .filter(Boolean)
+    .slice(0, 3);
+  if (!names.length) return null;
+  const suffix = (list || []).length > 3 ? " …" : "";
+  return `${names.join(", ")}${suffix}`;
+}
+
+function readableLeadershipRole(role: string) {
+  switch (role) {
+    case "head":
+      return "Leitung";
+    case "deputy":
+      return "Stv. Leitung";
+    case "scientific_lead":
+      return "Wissenschaftliche Leitung";
+    case "administrative_lead":
+      return "Administrative Leitung";
+    default:
+      return role;
+  }
+}
+
+export default function Directory({ initialQuery = "" }: { initialQuery?: string }) {
+  const [q, setQ] = useState(initialQuery);
   const [sortBy, setSortBy] = useState<"Lastname" | "Firstname">("Lastname");
   const [dir, setDir] = useState<"asc" | "desc">("asc");
   const [labelFilter, setLabelFilter] = useState<string>("");
@@ -222,6 +290,8 @@ export default function Directory() {
           const pubs = p.Publications || [];
           const previewPhone = pickByLabel(p.Phone, ["business", "privat", "private"]);
           const previewMail = pickByLabel(p.Mail, ["business", "privat", "private"]);
+          const sekretariatPreview = formatSecretariatPreview(p.Secretariats);
+          const orgPreview = formatOrgPreview(p.Organizations);
 
           return (
             <details key={p.id} className="person-card">
@@ -235,9 +305,15 @@ export default function Directory() {
                     <div className="person-meta">
                       {previewPhone?.Number ? `📞 ${previewPhone.Number}` : "keine Nummer"} ·{" "}
                       {previewMail?.Address ? `✉️ ${previewMail.Address}` : "keine E‑Mail"} ·{" "}
-                      {(p.Address || []).length ? `${(p.Address || []).length} Adresse` : "keine Adressen"} ·{" "}
-                      {pubs.length ? `${pubs.length} Publikationen` : "keine Publikationen"}
+                      {(p.Address || []).length ? `${(p.Address || []).length} Adresse` : "keine Adressen"}
+                      {pubs.length ? <> · {`${pubs.length} Publikationen`}</> : null}
                     </div>
+                    {sekretariatPreview ? (
+                      <div className="person-meta person-meta-extra">Sekretariat: {sekretariatPreview}</div>
+                    ) : null}
+                    {orgPreview ? (
+                      <div className="person-meta person-meta-extra">Organisation: {orgPreview}</div>
+                    ) : null}
                   </div>
                 </div>
                 <div className="person-toggle">Details</div>
@@ -307,9 +383,95 @@ export default function Directory() {
                   </section>
                 </div>
 
-                <section className="person-section publications">
-                  <h4>📚 Publikationen</h4>
-                  {pubs.length ? (
+                <div className="person-section-grid person-section-grid-extra">
+                  {(p.Secretariats || []).length ? (
+                    <section className="person-section">
+                      <h4>🧑‍💼 Sekretariat</h4>
+                      <div className="secretariat-list">
+                        {(p.Secretariats || []).map((s, idx) => {
+                          const secMails = (s.Mail || []).filter((m) => m?.Address);
+                          const secPhones = (s.Phones || []).filter((ph) => ph?.Number);
+                          const cardMail = s.Email || secMails[0]?.Address || null;
+                          const cardPhone = s.Phone || secPhones[0]?.Number || null;
+                          const addresses = (s.Address || []).map((a) => fmtAddress(a)).filter(Boolean);
+                          const orgs = (s.Organizations || [])
+                            .map((o) => o.Name || o.ShortName)
+                            .filter(Boolean)
+                            .join(", ");
+
+                          return (
+                            <article className="secretariat-card" key={s.documentId || s.id || idx}>
+                              <div className="secretariat-name">{s.Name || "(ohne Namen)"}</div>
+                              <div className="secretariat-lines">
+                                {cardMail ? (
+                                  <div>
+                                    <span>E‑Mail:</span> <a href={`mailto:${cardMail}`}>{cardMail}</a>
+                                  </div>
+                                ) : null}
+                                {secMails.slice(1).map((m, i) => (
+                                  <div key={`mail-${i}`}>
+                                    <span>{m?.Label || "E‑Mail"}:</span>{" "}
+                                    <a href={`mailto:${m?.Address}`}>{m?.Address}</a>
+                                  </div>
+                                ))}
+                                {cardPhone ? (
+                                  <div>
+                                    <span>Telefon:</span>{" "}
+                                    <a href={`tel:${cardPhone.replace(/\s/g, "")}`}>{cardPhone}</a>
+                                  </div>
+                                ) : null}
+                                {secPhones
+                                  .filter((ph) => ph?.Number !== cardPhone)
+                                  .map((ph, i) => (
+                                    <div key={`phone-${i}`}>
+                                      <span>{ph?.Label || "Telefon"}:</span>{" "}
+                                      <a href={`tel:${(ph?.Number || "").replace(/\s/g, "")}`}>{ph?.Number}</a>
+                                    </div>
+                                  ))}
+                                {orgs ? (
+                                  <div>
+                                    <span>Organisation:</span> {orgs}
+                                  </div>
+                                ) : null}
+                                {addresses[0] ? (
+                                  <div>
+                                    <span>Adresse:</span> {addresses[0]}
+                                  </div>
+                                ) : null}
+                              </div>
+                            </article>
+                          );
+                        })}
+                      </div>
+                    </section>
+                  ) : null}
+
+                  <section className="person-section">
+                    <h4>🏢 Organisation</h4>
+                    {(p.Organizations || []).length ? (
+                      <ul>
+                        {(p.Organizations || []).map((o, idx) => {
+                          const leadership = (o.LeadershipRoles || []).map(readableLeadershipRole).join(", ");
+                          return (
+                            <li key={o.documentId || o.id || idx}>
+                              <span>{o.Name || o.ShortName || "(ohne Name)"}</span>
+                              {o.AffiliationRole ? <> · Rolle: {o.AffiliationRole}</> : null}
+                              {leadership ? <> · Leitung: {leadership}</> : null}
+                              {o.AffiliationPrimary ? <> · primär</> : null}
+                              {o.LeadershipPrimary ? <> · Leitungs-Primär</> : null}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    ) : (
+                      <div className="empty">Keine Organisation hinterlegt</div>
+                    )}
+                  </section>
+                </div>
+
+                {pubs.length ? (
+                  <section className="person-section publications">
+                    <h4>📚 Publikationen</h4>
                     <div className="pub-list">
                       {pubs.map((pl) => {
                         const pub = pl.Publication;
@@ -334,10 +496,8 @@ export default function Directory() {
                         );
                       })}
                     </div>
-                  ) : (
-                    <div className="empty">Keine Publikationen</div>
-                  )}
-                </section>
+                  </section>
+                ) : null}
               </div>
             </details>
           );

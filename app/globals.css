@@ -190,6 +190,11 @@ body {
   font-size: 0.9rem;
 }
 
+.person-meta-extra {
+  margin-top: 2px;
+  font-size: 0.85rem;
+}
+
 .person-toggle {
   padding: 6px 12px;
   border-radius: 999px;
@@ -211,6 +216,39 @@ body {
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 16px;
   margin-bottom: 14px;
+}
+
+.person-section-grid-extra {
+  border-top: 1px dashed var(--card-border);
+  padding-top: 10px;
+}
+
+.secretariat-list {
+  display: grid;
+  gap: 8px;
+}
+
+.secretariat-card {
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  background: #fff;
+  padding: 8px 10px;
+}
+
+.secretariat-name {
+  font-weight: 650;
+  margin-bottom: 4px;
+}
+
+.secretariat-lines {
+  display: grid;
+  gap: 3px;
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+
+.secretariat-lines span {
+  color: var(--muted);
 }
 
 .person-section h4 {
