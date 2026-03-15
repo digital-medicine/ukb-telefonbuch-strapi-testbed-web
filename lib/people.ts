@@ -19,6 +19,7 @@ export type Address = {
 
 export type MediaFormat = { url?: string | null; width?: number | null; height?: number | null };
 export type Media = {
+  id?: number | null;
   url?: string | null;
   alternativeText?: string | null;
   formats?: Record<string, MediaFormat> | null;
@@ -75,6 +76,7 @@ export type Person = {
   Firstname?: string | null;
   Lastname?: string | null;
   MailIdentifier?: string | null;
+  ORCID?: string | null;
   WebexEnabled?: boolean | null;
   WebexEmail?: string | null;
   Secret?: string | null;
@@ -129,6 +131,7 @@ function normalizeMedia(input: any): Media | null {
       )
     : null;
   return {
+    id: raw.id ?? null,
     url: absUrl(raw.url ?? null),
     alternativeText: raw.alternativeText ?? null,
     formats,
@@ -340,9 +343,10 @@ function buildPersonPopulateParams(includeSecret: boolean) {
     sp.set("fields[2]", "Firstname");
     sp.set("fields[3]", "Lastname");
     sp.set("fields[4]", "MailIdentifier");
-    sp.set("fields[5]", "WebexEnabled");
-    sp.set("fields[6]", "WebexEmail");
-    sp.set("fields[7]", "documentId");
+    sp.set("fields[5]", "ORCID");
+    sp.set("fields[6]", "WebexEnabled");
+    sp.set("fields[7]", "WebexEmail");
+    sp.set("fields[8]", "documentId");
   }
   return sp;
 }
@@ -370,6 +374,7 @@ function normalizePerson(input: any, includeSecret: boolean): Person {
     Firstname: attrs.Firstname ?? attrs.firstname ?? null,
     Lastname: attrs.Lastname ?? attrs.lastname ?? null,
     MailIdentifier: attrs.MailIdentifier ?? attrs.mailIdentifier ?? null,
+    ORCID: attrs.ORCID ?? attrs.orcid ?? null,
     WebexEnabled: Boolean(attrs.WebexEnabled ?? attrs.webexEnabled),
     WebexEmail: attrs.WebexEmail ?? attrs.webexEmail ?? null,
     Secret: includeSecret ? attrs.Secret ?? attrs.secret ?? null : null,
@@ -422,6 +427,52 @@ export async function updatePersonSecret(documentId: string, secretHash: string)
       },
     }),
   });
+}
+
+export async function updatePersonSelfService(
+  documentId: string,
+  data: {
+    ORCID?: string | null;
+    Phone?: Phone[];
+    Mail?: Mail[];
+    Address?: Address[];
+    EmployeePicture?: number | null;
+  }
+) {
+  await strapiFetchJson(`/api/people/${documentId}?status=draft`, {
+    method: "PUT",
+    body: JSON.stringify({
+      data,
+    }),
+  });
+}
+
+export async function uploadPersonPicture(documentId: string, file: File) {
+  const formData = new FormData();
+  formData.append("files", file);
+
+  const response = await fetch(`${STRAPI_URL}/api/upload`, {
+    method: "POST",
+    headers: {
+      ...authHeaders(),
+    },
+    body: formData,
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    const text = await response.text().catch(() => "");
+    throw new Error(`Upload HTTP ${response.status} ${text}`);
+  }
+
+  const uploaded = (await response.json()) as Array<{ id?: number | null }>;
+  const fileId = uploaded?.[0]?.id;
+  if (!fileId) {
+    throw new Error("Upload returned no file id");
+  }
+
+  await updatePersonSelfService(documentId, { EmployeePicture: fileId });
+  return fileId;
 }
 
 export function findBusinessMail(person: Pick<Person, "Mail">) {

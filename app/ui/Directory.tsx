@@ -96,12 +96,6 @@ function fmtAddress(a: Address) {
   return [line1, line2, line3].filter(Boolean).join(" · ");
 }
 
-function yearFromDate(d?: string | null) {
-  if (!d) return null;
-  const m = String(d).match(/^(\d{4})/);
-  return m ? m[1] : null;
-}
-
 function pickByLabel<T extends { Label?: string | null }>(
   items: T[] | null | undefined,
   preferred: string[]
@@ -306,13 +300,15 @@ export default function Directory({ initialQuery = "" }: { initialQuery?: string
               </summary>
 
               <div className="person-body">
-                {p.documentId ? (
-                  <div className="person-actions">
-                    <Link href={`/contact/${p.documentId}`} className="person-link-button">
-                      Profil oeffnen
-                    </Link>
-                  </div>
-                ) : null}
+                <div className="person-body-top">
+                  {p.documentId ? (
+                    <div className="person-actions">
+                      <Link href={`/contact/${p.documentId}`} className="person-link-button">
+                        Profil oeffnen
+                      </Link>
+                    </div>
+                  ) : null}
+                </div>
 
                 <div className="person-section-grid">
                   <section className="person-section">

@@ -1,0 +1,422 @@
+"use client";
+
+import { useState } from "react";
+
+import { ADDRESS_LABEL_OPTIONS, MAIL_LABEL_OPTIONS, PHONE_LABEL_OPTIONS } from "@/lib/contact-labels";
+import { COUNTRY_OPTIONS } from "@/lib/countries";
+
+type Phone = { Label?: string | null; Number?: string | null };
+type Mail = { Label?: string | null; Address?: string | null };
+type Address = {
+  Label?: string | null;
+  StreetName?: string | null;
+  StreetNumber?: string | null;
+  Zip?: string | null;
+  City?: string | null;
+  State?: string | null;
+  Country?: string | null;
+};
+
+type Media = {
+  url?: string | null;
+  formats?: Record<string, { url?: string | null }> | null;
+};
+
+type Props = {
+  documentId: string;
+  token: string;
+  initial: {
+    ORCID?: string | null;
+    Phone?: Phone[] | null;
+    Mail?: Mail[] | null;
+    Address?: Address[] | null;
+    EmployeePicture?: Media | null;
+  };
+};
+
+function emptyPhone(): Phone {
+  return { Label: "", Number: "" };
+}
+
+function emptyMail(): Mail {
+  return { Label: "", Address: "" };
+}
+
+function emptyAddress(): Address {
+  return {
+    Label: "",
+    StreetName: "",
+    StreetNumber: "",
+    Zip: "",
+    City: "",
+    State: "",
+    Country: "",
+  };
+}
+
+export default function EditContactForm({ documentId, token, initial }: Props) {
+  const [orcid, setOrcid] = useState(initial.ORCID || "");
+  const [phones, setPhones] = useState<Phone[]>(initial.Phone?.length ? initial.Phone : [emptyPhone()]);
+  const [mails, setMails] = useState<Mail[]>(initial.Mail?.length ? initial.Mail : [emptyMail()]);
+  const [addresses, setAddresses] = useState<Address[]>(initial.Address?.length ? initial.Address : [emptyAddress()]);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoMessage, setPhotoMessage] = useState<string | null>(null);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [photoPreviewUrl, setPhotoPreviewUrl] = useState(
+    initial.EmployeePicture?.formats?.small?.url ||
+      initial.EmployeePicture?.formats?.thumbnail?.url ||
+      initial.EmployeePicture?.url ||
+      null
+  );
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setSaving(true);
+    setMessage(null);
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/people/${encodeURIComponent(documentId)}/self-service-update`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token,
+          ORCID: orcid,
+          Phone: phones,
+          Mail: mails,
+          Address: addresses,
+        }),
+      });
+
+      const json = (await response.json().catch(() => null)) as { error?: string } | null;
+      if (!response.ok) {
+        throw new Error(json?.error || "Speichern fehlgeschlagen");
+      }
+
+      setMessage("Die Angaben wurden gespeichert.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Speichern fehlgeschlagen");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handlePhotoUpload() {
+    if (!photoFile) return;
+
+    setUploadingPhoto(true);
+    setPhotoMessage(null);
+    setPhotoError(null);
+
+    try {
+      const body = new FormData();
+      body.append("token", token);
+      body.append("file", photoFile);
+
+      const response = await fetch(`/api/people/${encodeURIComponent(documentId)}/self-service-photo`, {
+        method: "POST",
+        body,
+      });
+
+      const json = (await response.json().catch(() => null)) as { error?: string } | null;
+      if (!response.ok) {
+        throw new Error(json?.error || "Bild-Upload fehlgeschlagen");
+      }
+
+      setPhotoPreviewUrl(URL.createObjectURL(photoFile));
+      setPhotoMessage("Das Bild wurde hochgeladen.");
+      setPhotoFile(null);
+    } catch (err) {
+      setPhotoError(err instanceof Error ? err.message : "Bild-Upload fehlgeschlagen");
+    } finally {
+      setUploadingPhoto(false);
+    }
+  }
+
+  return (
+    <form className="edit-form" onSubmit={handleSubmit}>
+      <section className="edit-form-card">
+        <div className="edit-form-header">
+          <h2>Kontaktdaten bearbeiten</h2>
+          <p>Hier koennen E-Mail-Adressen, Telefonnummern, ORCID und Adressen gepflegt werden.</p>
+        </div>
+
+        <div className="edit-field-block">
+          <label className="edit-label" htmlFor="orcid">
+            ORCID
+          </label>
+          <input
+            id="orcid"
+            className="edit-input"
+            value={orcid}
+            onChange={(e) => setOrcid(e.target.value)}
+            inputMode="text"
+            autoCapitalize="off"
+            autoCorrect="off"
+            spellCheck={false}
+            placeholder="0000-0000-0000-0000"
+          />
+        </div>
+      </section>
+
+      <section className="edit-form-card">
+        <div className="edit-section-title-row">
+          <h3>Profilbild</h3>
+        </div>
+        <div className="edit-photo-block">
+          <div className="edit-photo-preview">
+            {photoPreviewUrl ? <img src={photoPreviewUrl} alt="Aktuelles Profilbild" /> : <span>Kein Bild</span>}
+          </div>
+          <div className="edit-photo-controls">
+            <label className="edit-label" htmlFor="profile-image">
+              Neues Bild waehlen
+            </label>
+            <input
+              id="profile-image"
+              type="file"
+              accept="image/*"
+              className="edit-input"
+              onChange={(e) => setPhotoFile(e.target.files?.[0] || null)}
+            />
+            <button type="button" className="edit-submit-button" disabled={!photoFile || uploadingPhoto} onClick={handlePhotoUpload}>
+              {uploadingPhoto ? "Lade Bild hoch..." : "Bild hochladen"}
+            </button>
+            {photoMessage ? <p className="edit-request-success">{photoMessage}</p> : null}
+            {photoError ? <p className="edit-request-error">{photoError}</p> : null}
+          </div>
+        </div>
+      </section>
+
+      <section className="edit-form-card">
+        <div className="edit-section-title-row">
+          <h3>Telefonnummern</h3>
+          <button type="button" className="edit-add-button" onClick={() => setPhones((prev) => [...prev, emptyPhone()])}>
+            Telefonnummer hinzufuegen
+          </button>
+        </div>
+        <div className="edit-stack">
+          {phones.map((phone, index) => (
+            <div className="edit-row-card" key={`phone-${index}`}>
+              <div className="edit-grid-two">
+                <div className="edit-field-block">
+                  <label className="edit-label">Label</label>
+                  <select
+                    className="edit-input"
+                    value={phone.Label || ""}
+                    onChange={(e) =>
+                      setPhones((prev) => prev.map((row, i) => (i === index ? { ...row, Label: e.target.value } : row)))
+                    }
+                  >
+                    <option value="">Bitte waehlen</option>
+                    {PHONE_LABEL_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="edit-field-block">
+                  <label className="edit-label">Nummer</label>
+                  <input
+                    className="edit-input"
+                    type="tel"
+                    inputMode="tel"
+                    autoComplete="tel"
+                    value={phone.Number || ""}
+                    onChange={(e) =>
+                      setPhones((prev) => prev.map((row, i) => (i === index ? { ...row, Number: e.target.value } : row)))
+                    }
+                  />
+                </div>
+              </div>
+              <button type="button" className="edit-remove-button" onClick={() => setPhones((prev) => prev.filter((_, i) => i !== index))}>
+                Entfernen
+              </button>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="edit-form-card">
+        <div className="edit-section-title-row">
+          <h3>E-Mail-Adressen</h3>
+          <button type="button" className="edit-add-button" onClick={() => setMails((prev) => [...prev, emptyMail()])}>
+            E-Mail hinzufuegen
+          </button>
+        </div>
+        <div className="edit-stack">
+          {mails.map((mail, index) => (
+            <div className="edit-row-card" key={`mail-${index}`}>
+              <div className="edit-grid-two">
+                <div className="edit-field-block">
+                  <label className="edit-label">Label</label>
+                  <select
+                    className="edit-input"
+                    value={mail.Label || ""}
+                    onChange={(e) =>
+                      setMails((prev) => prev.map((row, i) => (i === index ? { ...row, Label: e.target.value } : row)))
+                    }
+                  >
+                    <option value="">Bitte waehlen</option>
+                    {MAIL_LABEL_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="edit-field-block">
+                  <label className="edit-label">Adresse</label>
+                  <input
+                    className="edit-input"
+                    type="email"
+                    inputMode="email"
+                    autoComplete="email"
+                    autoCapitalize="off"
+                    value={mail.Address || ""}
+                    onChange={(e) =>
+                      setMails((prev) => prev.map((row, i) => (i === index ? { ...row, Address: e.target.value } : row)))
+                    }
+                  />
+                </div>
+              </div>
+              <button type="button" className="edit-remove-button" onClick={() => setMails((prev) => prev.filter((_, i) => i !== index))}>
+                Entfernen
+              </button>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="edit-form-card">
+        <div className="edit-section-title-row">
+          <h3>Adressen</h3>
+          <button
+            type="button"
+            className="edit-add-button"
+            onClick={() => setAddresses((prev) => [...prev, emptyAddress()])}
+          >
+            Adresse hinzufuegen
+          </button>
+        </div>
+        <div className="edit-stack">
+          {addresses.map((address, index) => (
+            <div className="edit-row-card" key={`address-${index}`}>
+              <div className="edit-grid-address">
+                <div className="edit-field-block">
+                  <label className="edit-label">Label</label>
+                  <select
+                    className="edit-input"
+                    value={address.Label || ""}
+                    onChange={(e) =>
+                      setAddresses((prev) => prev.map((row, i) => (i === index ? { ...row, Label: e.target.value } : row)))
+                    }
+                  >
+                    <option value="">Bitte waehlen</option>
+                    {ADDRESS_LABEL_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="edit-field-block">
+                  <label className="edit-label">Strasse</label>
+                  <input
+                    className="edit-input"
+                    autoComplete="address-line1"
+                    value={address.StreetName || ""}
+                    onChange={(e) =>
+                      setAddresses((prev) => prev.map((row, i) => (i === index ? { ...row, StreetName: e.target.value } : row)))
+                    }
+                  />
+                </div>
+                <div className="edit-field-block">
+                  <label className="edit-label">Hausnummer</label>
+                  <input
+                    className="edit-input"
+                    autoComplete="address-line2"
+                    value={address.StreetNumber || ""}
+                    onChange={(e) =>
+                      setAddresses((prev) => prev.map((row, i) => (i === index ? { ...row, StreetNumber: e.target.value } : row)))
+                    }
+                  />
+                </div>
+                <div className="edit-field-block">
+                  <label className="edit-label">PLZ</label>
+                  <input
+                    className="edit-input"
+                    inputMode="numeric"
+                    autoComplete="postal-code"
+                    value={address.Zip || ""}
+                    onChange={(e) =>
+                      setAddresses((prev) => prev.map((row, i) => (i === index ? { ...row, Zip: e.target.value } : row)))
+                    }
+                  />
+                </div>
+                <div className="edit-field-block">
+                  <label className="edit-label">Ort</label>
+                  <input
+                    className="edit-input"
+                    autoComplete="address-level2"
+                    value={address.City || ""}
+                    onChange={(e) =>
+                      setAddresses((prev) => prev.map((row, i) => (i === index ? { ...row, City: e.target.value } : row)))
+                    }
+                  />
+                </div>
+                <div className="edit-field-block">
+                  <label className="edit-label">Bundesland</label>
+                  <input
+                    className="edit-input"
+                    autoComplete="address-level1"
+                    value={address.State || ""}
+                    onChange={(e) =>
+                      setAddresses((prev) => prev.map((row, i) => (i === index ? { ...row, State: e.target.value } : row)))
+                    }
+                  />
+                </div>
+                <div className="edit-field-block">
+                  <label className="edit-label">Land</label>
+                  <select
+                    className="edit-input"
+                    value={address.Country || ""}
+                    onChange={(e) =>
+                      setAddresses((prev) => prev.map((row, i) => (i === index ? { ...row, Country: e.target.value } : row)))
+                    }
+                  >
+                    <option value="">Bitte waehlen</option>
+                    {COUNTRY_OPTIONS.map((country) => (
+                      <option key={country} value={country}>
+                        {country}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="edit-remove-button"
+                onClick={() => setAddresses((prev) => prev.filter((_, i) => i !== index))}
+              >
+                Entfernen
+              </button>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <div className="edit-submit-row">
+        <button type="submit" className="edit-submit-button" disabled={saving}>
+          {saving ? "Speichere..." : "Aenderungen speichern"}
+        </button>
+        {message ? <p className="edit-request-success">{message}</p> : null}
+        {error ? <p className="edit-request-error">{error}</p> : null}
+      </div>
+    </form>
+  );
+}

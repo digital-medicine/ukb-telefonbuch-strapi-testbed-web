@@ -19,13 +19,6 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
   background:
     radial-gradient(900px 500px at 10% -10%, #e7eef6 0%, transparent 60%),
@@ -211,10 +204,16 @@ body {
   background: #fbfbfc;
 }
 
+.person-body-top {
+  display: flex;
+  justify-content: flex-end;
+  min-height: 0;
+  margin-bottom: 8px;
+}
+
 .person-actions {
   display: flex;
   justify-content: flex-end;
-  margin-bottom: 14px;
 }
 
 .person-link-button,
@@ -409,6 +408,12 @@ body {
   max-width: 1120px;
   margin: 0 auto;
   padding: 32px 24px 56px;
+  color: var(--ink);
+}
+
+.person-page,
+.person-page * {
+  color: inherit;
 }
 
 .person-page-header {
@@ -420,13 +425,13 @@ body {
 .person-page-title {
   margin: 0;
   font-size: clamp(2rem, 3vw, 2.8rem);
-  color: var(--ink);
+  color: #111318;
   letter-spacing: -0.02em;
 }
 
 .person-page-subtitle {
   margin: 0;
-  color: var(--ink-soft);
+  color: #4a4f5c;
   max-width: 60ch;
 }
 
@@ -453,6 +458,7 @@ body {
     radial-gradient(90% 120% at 100% 0%, rgba(231, 238, 246, 0.9), transparent 40%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.97), rgba(247, 249, 252, 0.97));
   box-shadow: 0 22px 44px rgba(15, 23, 42, 0.08);
+  color: #111318;
 }
 
 .person-hero-media {
@@ -483,6 +489,7 @@ body {
   display: grid;
   gap: 18px;
   align-content: start;
+  color: #111318;
 }
 
 .person-hero-title-block {
@@ -493,20 +500,20 @@ body {
 .person-hero-content h2 {
   margin: 0;
   font-size: clamp(1.8rem, 2.5vw, 2.3rem);
-  color: var(--ink);
+  color: #111318;
   letter-spacing: -0.02em;
 }
 
 .person-hero-role {
   margin: 0;
   font-size: 1rem;
-  color: var(--accent);
+  color: #1f6f5b;
   font-weight: 700;
 }
 
 .person-hero-id {
   margin: 0;
-  color: var(--ink-soft);
+  color: #4a4f5c;
   font-size: 0.95rem;
 }
 
@@ -523,7 +530,7 @@ body {
   border-radius: 999px;
   border: 1px solid #dce4e1;
   background: rgba(255, 255, 255, 0.9);
-  color: var(--ink-soft);
+  color: #2f3640;
   font-size: 0.88rem;
   font-weight: 600;
 }
@@ -544,6 +551,7 @@ body {
   border: 1px solid var(--card-border);
   background: linear-gradient(180deg, #ffffff, #fcfcfd);
   box-shadow: 0 12px 28px rgba(15, 23, 42, 0.05);
+  color: #111318;
 }
 
 .person-detail-card-wide {
@@ -552,7 +560,7 @@ body {
 
 .person-detail-card h3 {
   margin: 0 0 10px;
-  color: var(--ink);
+  color: #111318;
   font-size: 1.02rem;
   letter-spacing: -0.01em;
 }
@@ -564,15 +572,21 @@ body {
 
 .person-detail-card li {
   margin-bottom: 6px;
-  color: var(--ink-soft);
+  color: #2f3640;
+}
+
+.person-detail-card p,
+.person-detail-card div,
+.person-detail-card strong {
+  color: inherit;
 }
 
 .person-detail-card li span {
-  color: var(--muted);
+  color: #5f6675;
 }
 
 .person-detail-card a {
-  color: var(--accent);
+  color: #0f5d61;
   text-decoration: none;
 }
 
@@ -587,6 +601,7 @@ body {
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.86);
   border: 1px solid #dfe6e4;
+  color: #111318;
 }
 
 .edit-request-button {
@@ -606,7 +621,7 @@ body {
 .edit-request-error,
 .edit-state-copy {
   margin: 0;
-  color: var(--ink-soft);
+  color: #2f3640;
   font-size: 0.95rem;
 }
 
@@ -620,7 +635,175 @@ body {
 
 .edit-state-title {
   margin: 0 0 10px;
-  color: var(--ink);
+  color: #111318;
+}
+
+.person-page .empty {
+  color: #4a4f5c;
+  opacity: 1;
+}
+
+.edit-form {
+  display: grid;
+  gap: 18px;
+  margin-top: 18px;
+}
+
+.edit-form-card {
+  padding: 18px;
+  border-radius: 18px;
+  border: 1px solid var(--card-border);
+  background: #ffffff;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.05);
+}
+
+.edit-form-header {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.edit-form-header h2,
+.edit-form-card h3 {
+  margin: 0;
+  color: #111318;
+}
+
+.edit-form-header p {
+  margin: 0;
+  color: #4a4f5c;
+}
+
+.edit-section-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.edit-stack {
+  display: grid;
+  gap: 12px;
+}
+
+.edit-row-card {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid #e5e8ec;
+  border-radius: 14px;
+  background: #fafbfc;
+}
+
+.edit-grid-two {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.edit-grid-address {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.edit-field-block {
+  display: grid;
+  gap: 6px;
+}
+
+.edit-label {
+  color: #4a4f5c;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.edit-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #d7dde4;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #111318;
+}
+
+.edit-input:focus {
+  outline: 2px solid rgba(31, 111, 91, 0.18);
+  border-color: #1f6f5b;
+}
+
+.edit-input[type="file"] {
+  padding: 8px 10px;
+}
+
+.edit-add-button,
+.edit-remove-button,
+.edit-submit-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  border-radius: 10px;
+  border: 1px solid #d4ddd9;
+  background: #ffffff;
+  color: #111318;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.edit-add-button,
+.edit-remove-button {
+  padding: 8px 12px;
+}
+
+.edit-submit-row {
+  display: grid;
+  gap: 10px;
+}
+
+.edit-submit-button {
+  padding: 11px 16px;
+  background: linear-gradient(180deg, #ffffff, #f6fbf8);
+}
+
+.edit-submit-button:disabled,
+.edit-add-button:disabled,
+.edit-remove-button:disabled {
+  opacity: 0.65;
+  cursor: progress;
+}
+
+.edit-photo-block {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: 18px;
+  align-items: start;
+}
+
+.edit-photo-preview {
+  width: 180px;
+  height: 220px;
+  border-radius: 18px;
+  border: 1px solid #d7dde4;
+  background: linear-gradient(180deg, #f2f5f7, #e9eef2);
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  color: #5f6675;
+  font-weight: 600;
+}
+
+.edit-photo-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.edit-photo-controls {
+  display: grid;
+  gap: 10px;
+  align-content: start;
 }
 
 .organization-list {
@@ -643,7 +826,7 @@ body {
 }
 
 .organization-name {
-  color: var(--ink);
+  color: #111318;
   font-weight: 600;
 }
 
@@ -679,6 +862,20 @@ body {
 
   .person-detail-grid {
     grid-template-columns: 1fr;
+  }
+
+  .edit-grid-two,
+  .edit-grid-address {
+    grid-template-columns: 1fr;
+  }
+
+  .edit-photo-block {
+    grid-template-columns: 1fr;
+  }
+
+  .edit-section-title-row {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
 

@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import EditContactForm from "./EditContactForm";
 import { fetchPersonByDocumentId, formatPersonName, hashSecret } from "@/lib/people";
 
 export default async function ContactEditPage({
@@ -31,9 +32,19 @@ export default async function ContactEditPage({
             <>
               <h2 className="edit-state-title">Link gueltig fuer {formatPersonName(person)}</h2>
               <p className="edit-state-copy">
-                Der Bearbeitungslink wurde erfolgreich verifiziert. Die eigentliche Bearbeitungsmaske kann jetzt auf
-                dieser Route aufgebaut werden.
+                Du kannst jetzt die freigegebenen Kontaktdaten anpassen und direkt speichern.
               </p>
+              <EditContactForm
+                documentId={documentId}
+                token={token}
+                initial={{
+                  ORCID: person.ORCID,
+                  Phone: person.Phone,
+                  Mail: person.Mail,
+                  Address: person.Address,
+                  EmployeePicture: person.EmployeePicture,
+                }}
+              />
             </>
           ) : (
             <>
