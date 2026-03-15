@@ -96,6 +96,30 @@ function fmtAddress(a: Address) {
   return [line1, line2, line3].filter(Boolean).join(" · ");
 }
 
+function formatContactLabel(label?: string | null, fallback = "Kontakt") {
+  const value = (label || "").trim().toLowerCase();
+  switch (value) {
+    case "business":
+      return "Business";
+    case "business mobile":
+      return "Business Mobil";
+    case "private":
+      return "Privat";
+    case "private mobile":
+      return "Privat Mobil";
+    case "fax":
+      return "Fax";
+    case "pager":
+      return "Pager";
+    case "assistant":
+      return "Assistenz";
+    case "other":
+      return "Sonstiges";
+    default:
+      return label || fallback;
+  }
+}
+
 function pickByLabel<T extends { Label?: string | null }>(
   items: T[] | null | undefined,
   preferred: string[]
@@ -103,7 +127,7 @@ function pickByLabel<T extends { Label?: string | null }>(
   const list = items || [];
   if (!list.length) return null;
   for (const pref of preferred) {
-    const found = list.find((it) => (it?.Label || "").toLowerCase() === pref);
+    const found = list.find((it) => (it?.Label || "").trim().toLowerCase() === pref.trim().toLowerCase());
     if (found) return found;
   }
   return list[0] || null;
@@ -236,7 +260,7 @@ export default function Directory({ initialQuery = "" }: { initialQuery?: string
             <option value="">(alle)</option>
             {labelOptions.map((l) => (
               <option key={l} value={l}>
-                {l}
+                {formatContactLabel(l, l)}
               </option>
             ))}
           </select>
@@ -263,11 +287,11 @@ export default function Directory({ initialQuery = "" }: { initialQuery?: string
             p.EmployeePicture?.url ||
             null;
           const alt = p.EmployeePicture?.alternativeText || fmtName(p);
-          const previewPhone = pickByLabel(p.Phone, ["business", "privat", "private"]);
-          const previewMail = pickByLabel(p.Mail, ["business", "privat", "private"]);
+          const previewPhone = pickByLabel(p.Phone, ["Business", "Business Mobile", "Private", "Private Mobile"]);
+          const previewMail = pickByLabel(p.Mail, ["Business", "Private", "Other"]);
           const webexMail =
             p.WebexEmail ||
-            pickByLabel(p.Mail, ["business", "other", "private", "privat"])?.Address ||
+            pickByLabel(p.Mail, ["Business", "Other", "Private"])?.Address ||
             null;
           const webexLink = p.WebexEnabled && webexMail ? `webexteams://im?email=${encodeURIComponent(webexMail)}` : null;
           const sekretariatPreview = formatSecretariatPreview(p.Secretariats);
@@ -300,16 +324,6 @@ export default function Directory({ initialQuery = "" }: { initialQuery?: string
               </summary>
 
               <div className="person-body">
-                <div className="person-body-top">
-                  {p.documentId ? (
-                    <div className="person-actions">
-                      <Link href={`/contact/${p.documentId}`} className="person-link-button">
-                        Profil oeffnen
-                      </Link>
-                    </div>
-                  ) : null}
-                </div>
-
                 <div className="person-section-grid">
                   <section className="person-section">
                     <h4>💬 Chat</h4>
@@ -329,7 +343,7 @@ export default function Directory({ initialQuery = "" }: { initialQuery?: string
                     {(p.Phone || []).length ? (
                       <ul>
                         {(p.Phone || []).map((ph, idx) => {
-                          const label = ph?.Label || "phone";
+                          const label = formatContactLabel(ph?.Label, "Telefon");
                           const number = ph?.Number || "";
                           const telHref = number ? `tel:${number.replace(/\s/g, "")}` : "#";
                           return (
@@ -350,7 +364,7 @@ export default function Directory({ initialQuery = "" }: { initialQuery?: string
                     {(p.Mail || []).length ? (
                       <ul>
                         {(p.Mail || []).map((m, idx) => {
-                          const label = m?.Label || "mail";
+                          const label = formatContactLabel(m?.Label, "E-Mail");
                           const addr = m?.Address || "";
                           const mailHref = addr ? `mailto:${addr}` : "#";
                           return (
@@ -413,7 +427,7 @@ export default function Directory({ initialQuery = "" }: { initialQuery?: string
                                 ) : null}
                                 {secMails.slice(1).map((m, i) => (
                                   <div key={`mail-${i}`}>
-                                    <span>{m?.Label || "E‑Mail"}:</span>{" "}
+                                    <span>{formatContactLabel(m?.Label, "E‑Mail")}:</span>{" "}
                                     <a href={`mailto:${m?.Address}`}>{m?.Address}</a>
                                   </div>
                                 ))}
@@ -427,7 +441,7 @@ export default function Directory({ initialQuery = "" }: { initialQuery?: string
                                   .filter((ph) => ph?.Number !== cardPhone)
                                   .map((ph, i) => (
                                     <div key={`phone-${i}`}>
-                                      <span>{ph?.Label || "Telefon"}:</span>{" "}
+                                      <span>{formatContactLabel(ph?.Label, "Telefon")}:</span>{" "}
                                       <a href={`tel:${(ph?.Number || "").replace(/\s/g, "")}`}>{ph?.Number}</a>
                                     </div>
                                   ))}
@@ -470,6 +484,14 @@ export default function Directory({ initialQuery = "" }: { initialQuery?: string
                     )}
                   </section>
                 </div>
+
+                {p.documentId ? (
+                  <div className="person-actions person-actions-bottom">
+                    <Link href={`/contact/${p.documentId}`} className="person-link-button">
+                      Profil oeffnen
+                    </Link>
+                  </div>
+                ) : null}
               </div>
             </details>
           );

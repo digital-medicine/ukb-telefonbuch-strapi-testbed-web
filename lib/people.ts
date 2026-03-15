@@ -99,6 +99,10 @@ function clean(value: unknown): string {
   return String(value).trim();
 }
 
+function labelEquals(value: unknown, expected: string) {
+  return clean(value).toLowerCase() === clean(expected).toLowerCase();
+}
+
 function unwrapEntity(input: any) {
   if (!input) return null;
   if (input?.data) return unwrapEntity(input.data);
@@ -248,9 +252,14 @@ function normalizePersonRef(input: any): Secretariat | null {
   const primaryOrganization = normalizeOrganizationRef(
     attrs.PrimaryOrganization ?? attrs.primaryOrganization
   );
-  const businessMail = mails.find((m) => clean(m?.Label).toLowerCase() === "business")?.Address || mails[0]?.Address || null;
+  const businessMail =
+    mails.find((m) => labelEquals(m?.Label, "Business"))?.Address ||
+    mails.find((m) => labelEquals(m?.Label, "Other"))?.Address ||
+    mails[0]?.Address ||
+    null;
   const businessPhone =
-    phones.find((p) => clean(p?.Label).toLowerCase() === "business")?.Number ||
+    phones.find((p) => labelEquals(p?.Label, "Business"))?.Number ||
+    phones.find((p) => labelEquals(p?.Label, "Business Mobile"))?.Number ||
     phones[0]?.Number ||
     null;
   const allOrganizations = mergeOrganizations(organizations, primaryOrganization, []);
@@ -477,7 +486,10 @@ export async function uploadPersonPicture(documentId: string, file: File) {
 
 export function findBusinessMail(person: Pick<Person, "Mail">) {
   const list = person.Mail || [];
-  return list.find((entry) => clean(entry?.Label).toLowerCase() === "business")?.Address?.trim() || null;
+  return (
+    list.find((entry) => labelEquals(entry?.Label, "Business"))?.Address?.trim() ||
+    null
+  );
 }
 
 export function formatPersonName(person: Pick<Person, "Title" | "Firstname" | "Lastname">) {

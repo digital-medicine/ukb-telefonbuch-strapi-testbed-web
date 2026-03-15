@@ -204,16 +204,13 @@ body {
   background: #fbfbfc;
 }
 
-.person-body-top {
-  display: flex;
-  justify-content: flex-end;
-  min-height: 0;
-  margin-bottom: 8px;
-}
-
 .person-actions {
   display: flex;
   justify-content: flex-end;
+}
+
+.person-actions-bottom {
+  margin-top: 14px;
 }
 
 .person-link-button,
@@ -594,6 +591,43 @@ body {
   text-decoration: underline;
 }
 
+.contact-block-list {
+  display: grid;
+  gap: 12px;
+}
+
+.contact-block-item {
+  display: grid;
+  gap: 8px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid #e6eaef;
+  background: #f9fbfc;
+}
+
+.contact-block-label {
+  color: #5f6675;
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.contact-block-value {
+  color: #2f3640;
+  display: grid;
+  gap: 4px;
+}
+
+.contact-block-break {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.contact-block-address {
+  gap: 2px;
+}
+
 .edit-request {
   display: grid;
   gap: 8px;
@@ -890,5 +924,9 @@ body {
 
   .person-toggle {
     align-self: flex-start;
+  }
+
+  .person-actions {
+    justify-content: flex-start;
   }
 }
