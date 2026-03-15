@@ -10,6 +10,19 @@ Create a local env file from the template:
 cp .env.example .env.local
 ```
 
+Required variables:
+
+```bash
+STRAPI_URL=
+STRAPI_TOKEN=
+SMTP_HOST=
+SMTP_PORT=
+SMTP_USER=
+SMTP_PASS=
+SMTP_FROM=
+SMTP_SECURE=
+```
+
 First, run the development server:
 
 ```bash

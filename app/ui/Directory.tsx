@@ -1,5 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 type Phone = { Label?: string | null; Number?: string | null };
@@ -67,10 +69,13 @@ type PublicationLink = {
 
 type Person = {
   id: number;
+  documentId?: string | null;
   Title?: string | null;
   Firstname?: string | null;
   Lastname?: string | null;
   MailIdentifier?: string | null;
+  WebexEnabled?: boolean | null;
+  WebexEmail?: string | null;
   Phone?: Phone[] | null;
   Mail?: Mail[] | null;
   Address?: Address[] | null;
@@ -95,14 +100,6 @@ function yearFromDate(d?: string | null) {
   if (!d) return null;
   const m = String(d).match(/^(\d{4})/);
   return m ? m[1] : null;
-}
-
-function pubMeta(p?: Publication | null) {
-  if (!p) return "";
-  const year = yearFromDate(p.PublishedDate);
-  const journal = p.Journal || "";
-  const parts = [year, journal].filter(Boolean);
-  return parts.join(" · ");
 }
 
 function pickByLabel<T extends { Label?: string | null }>(
@@ -139,21 +136,6 @@ function formatOrgPreview(list: OrganizationInfo[] | null | undefined) {
   if (!names.length) return null;
   const suffix = (list || []).length > 3 ? " …" : "";
   return `${names.join(", ")}${suffix}`;
-}
-
-function readableLeadershipRole(role: string) {
-  switch (role) {
-    case "head":
-      return "Leitung";
-    case "deputy":
-      return "Stv. Leitung";
-    case "scientific_lead":
-      return "Wissenschaftliche Leitung";
-    case "administrative_lead":
-      return "Administrative Leitung";
-    default:
-      return role;
-  }
 }
 
 export default function Directory({ initialQuery = "" }: { initialQuery?: string }) {
@@ -287,9 +269,13 @@ export default function Directory({ initialQuery = "" }: { initialQuery?: string
             p.EmployeePicture?.url ||
             null;
           const alt = p.EmployeePicture?.alternativeText || fmtName(p);
-          const pubs = p.Publications || [];
           const previewPhone = pickByLabel(p.Phone, ["business", "privat", "private"]);
           const previewMail = pickByLabel(p.Mail, ["business", "privat", "private"]);
+          const webexMail =
+            p.WebexEmail ||
+            pickByLabel(p.Mail, ["business", "other", "private", "privat"])?.Address ||
+            null;
+          const webexLink = p.WebexEnabled && webexMail ? `webexteams://im?email=${encodeURIComponent(webexMail)}` : null;
           const sekretariatPreview = formatSecretariatPreview(p.Secretariats);
           const orgPreview = formatOrgPreview(p.Organizations);
 
@@ -306,7 +292,7 @@ export default function Directory({ initialQuery = "" }: { initialQuery?: string
                       {previewPhone?.Number ? `📞 ${previewPhone.Number}` : "keine Nummer"} ·{" "}
                       {previewMail?.Address ? `✉️ ${previewMail.Address}` : "keine E‑Mail"} ·{" "}
                       {(p.Address || []).length ? `${(p.Address || []).length} Adresse` : "keine Adressen"}
-                      {pubs.length ? <> · {`${pubs.length} Publikationen`}</> : null}
+                      {webexLink ? <> · 💬 Webex</> : null}
                     </div>
                     {sekretariatPreview ? (
                       <div className="person-meta person-meta-extra">Sekretariat: {sekretariatPreview}</div>
@@ -320,7 +306,28 @@ export default function Directory({ initialQuery = "" }: { initialQuery?: string
               </summary>
 
               <div className="person-body">
+                {p.documentId ? (
+                  <div className="person-actions">
+                    <Link href={`/contact/${p.documentId}`} className="person-link-button">
+                      Profil oeffnen
+                    </Link>
+                  </div>
+                ) : null}
+
                 <div className="person-section-grid">
+                  <section className="person-section">
+                    <h4>💬 Chat</h4>
+                    {webexLink ? (
+                      <ul>
+                        <li>
+                          <a href={webexLink}>Webex-Chat öffnen</a>
+                        </li>
+                      </ul>
+                    ) : (
+                      <div className="empty">Kein Webex hinterlegt</div>
+                    )}
+                  </section>
+
                   <section className="person-section">
                     <h4>📞 Telefon</h4>
                     {(p.Phone || []).length ? (
@@ -451,14 +458,13 @@ export default function Directory({ initialQuery = "" }: { initialQuery?: string
                     {(p.Organizations || []).length ? (
                       <ul>
                         {(p.Organizations || []).map((o, idx) => {
-                          const leadership = (o.LeadershipRoles || []).map(readableLeadershipRole).join(", ");
+                          const isLeadership = Boolean((o.LeadershipRoles || []).length) || Boolean(o.LeadershipPrimary);
                           return (
                             <li key={o.documentId || o.id || idx}>
-                              <span>{o.Name || o.ShortName || "(ohne Name)"}</span>
-                              {o.AffiliationRole ? <> · Rolle: {o.AffiliationRole}</> : null}
-                              {leadership ? <> · Leitung: {leadership}</> : null}
-                              {o.AffiliationPrimary ? <> · primär</> : null}
-                              {o.LeadershipPrimary ? <> · Leitungs-Primär</> : null}
+                              <span>
+                                {o.Name || o.ShortName || "(ohne Name)"}
+                                {isLeadership ? " (Leitung)" : ""}
+                              </span>
                             </li>
                           );
                         })}
@@ -468,36 +474,6 @@ export default function Directory({ initialQuery = "" }: { initialQuery?: string
                     )}
                   </section>
                 </div>
-
-                {pubs.length ? (
-                  <section className="person-section publications">
-                    <h4>📚 Publikationen</h4>
-                    <div className="pub-list">
-                      {pubs.map((pl) => {
-                        const pub = pl.Publication;
-                        if (!pub) return null;
-                        const meta = pubMeta(pub);
-                        const link = pub.URL || (pub.DOI ? `https://doi.org/${pub.DOI}` : null);
-                        return (
-                          <article key={pl.id || pub.id} className="pub-item">
-                            <div className="pub-title">{pub.Title || "Ohne Titel"}</div>
-                            {meta ? <div className="pub-meta">{meta}</div> : null}
-                            <div className="pub-links">
-                              {link ? (
-                                <a href={link} target="_blank" rel="noreferrer">
-                                  Öffnen
-                                </a>
-                              ) : (
-                                <span className="empty">Kein Link</span>
-                              )}
-                              {pub.Type ? <span className="pub-type">{pub.Type}</span> : null}
-                            </div>
-                          </article>
-                        );
-                      })}
-                    </div>
-                  </section>
-                ) : null}
               </div>
             </details>
           );

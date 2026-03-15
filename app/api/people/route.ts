@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest } from "next/server";
 
 const STRAPI_URL = process.env.STRAPI_URL!;
@@ -374,6 +375,8 @@ export async function GET(req: NextRequest) {
       Firstname: attrs.Firstname ?? attrs.firstname ?? null,
       Lastname: attrs.Lastname ?? attrs.lastname ?? null,
       MailIdentifier: attrs.MailIdentifier ?? attrs.mailIdentifier ?? null,
+      WebexEnabled: Boolean(attrs.WebexEnabled ?? attrs.webexEnabled),
+      WebexEmail: attrs.WebexEmail ?? attrs.webexEmail ?? null,
       Phone: attrs.Phone ?? attrs.phone ?? [],
       Mail: attrs.Mail ?? attrs.mail ?? [],
       Address: attrs.Address ?? attrs.address ?? [],
