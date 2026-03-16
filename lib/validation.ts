@@ -53,8 +53,27 @@ function isEmailValid(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
+function normalizeOrcid(value: string) {
+  const trimmed = clean(value).toUpperCase();
+  const normalizedDashes = trimmed.replace(/[‐‑‒–—−]/g, "-");
+  const withoutPrefix = normalizedDashes.replace(/^https?:\/\/ORCID\.ORG\//i, "");
+  const compact = withoutPrefix.replace(/[^0-9X]/g, "");
+  if (!/^\d{15}[\dX]$/.test(compact)) return trimmed;
+  return `${compact.slice(0, 4)}-${compact.slice(4, 8)}-${compact.slice(8, 12)}-${compact.slice(12)}`;
+}
+
+export { normalizeOrcid };
+
+function extractOrcidCompact(value: string) {
+  return clean(value)
+    .toUpperCase()
+    .replace(/^https?:\/\/ORCID\.ORG\//i, "")
+    .replace(/[‐‑‒–—−]/g, "")
+    .replace(/[^0-9X]/g, "");
+}
+
 function isOrcidChecksumValid(value: string) {
-  const compact = value.replace(/-/g, "");
+  const compact = extractOrcidCompact(value);
   if (!/^\d{15}[\dX]$/.test(compact)) return false;
 
   let total = 0;
@@ -115,10 +134,11 @@ export function sanitizeAddresses(list: Address[] = []) {
 export function validateSelfServicePayload(payload: SelfServicePayload) {
   const errors: ValidationErrors = {};
 
-  const orcid = clean(payload.ORCID);
+  const orcid = normalizeOrcid(clean(payload.ORCID));
   if (orcid) {
-    if (!/^\d{4}-\d{4}-\d{4}-[\dX]$/.test(orcid)) {
-      errors.orcid = "ORCID muss das Format 0000-0000-0000-0000 haben.";
+    const compact = extractOrcidCompact(orcid);
+    if (compact.length !== 16) {
+      errors.orcid = "ORCID muss 16 Stellen enthalten.";
     } else if (!isOrcidChecksumValid(orcid)) {
       errors.orcid = "ORCID-Prüfziffer ist ungültig.";
     }

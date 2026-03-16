@@ -691,6 +691,46 @@ body {
   color: var(--accent);
 }
 
+.edit-success-panel {
+  display: grid;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid #bfddd4;
+  background: linear-gradient(180deg, #f4fcf8, #edf8f4);
+}
+
+.edit-success-actions {
+  display: grid;
+  gap: 10px;
+  align-items: start;
+}
+
+.edit-success-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid #c8ddd6;
+  background: #ffffff;
+  color: #155b4d;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.edit-success-link:hover {
+  text-decoration: none;
+  background: #f8fcfa;
+}
+
+.edit-success-note {
+  margin: 0;
+  color: #476056;
+  font-size: 0.9rem;
+}
+
 .edit-request-error {
   padding: 12px 14px;
   border-radius: 12px;

@@ -11,7 +11,7 @@ import {
   canonicalizeContactLabel,
 } from "@/lib/contact-labels";
 import { COUNTRY_OPTIONS } from "@/lib/countries";
-import { validateSelfServicePayload, type ValidationErrors } from "@/lib/validation";
+import { normalizeOrcid, validateSelfServicePayload, type ValidationErrors } from "@/lib/validation";
 
 type Phone = { Label?: string | null; Number?: string | null };
 type Mail = { Label?: string | null; Address?: string | null };
@@ -63,6 +63,7 @@ function emptyAddress(): Address {
 }
 
 export default function EditContactForm({ documentId, token, initial }: Props) {
+  const normalizedInitialOrcid = normalizeOrcid(initial.ORCID || "");
   const normalizedInitialPhones = (initial.Phone || []).map((entry) => ({
     ...entry,
     Label: canonicalizeContactLabel(entry?.Label, PHONE_LABEL_OPTIONS) || "",
@@ -75,8 +76,14 @@ export default function EditContactForm({ documentId, token, initial }: Props) {
     ...entry,
     Label: canonicalizeContactLabel(entry?.Label, ADDRESS_LABEL_OPTIONS) || "",
   }));
+  const normalizedInitialPayload = validateSelfServicePayload({
+    ORCID: normalizedInitialOrcid,
+    Phone: normalizedInitialPhones,
+    Mail: normalizedInitialMails,
+    Address: normalizedInitialAddresses,
+  }).sanitized;
 
-  const [orcid, setOrcid] = useState(initial.ORCID || "");
+  const [orcid, setOrcid] = useState(normalizedInitialOrcid);
   const [phones, setPhones] = useState<Phone[]>(normalizedInitialPhones.length ? normalizedInitialPhones : [emptyPhone()]);
   const [mails, setMails] = useState<Mail[]>(normalizedInitialMails.length ? normalizedInitialMails : [emptyMail()]);
   const [addresses, setAddresses] = useState<Address[]>(
@@ -96,17 +103,17 @@ export default function EditContactForm({ documentId, token, initial }: Props) {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
-  const [baselineSnapshot, setBaselineSnapshot] = useState(() =>
-    JSON.stringify({
-      ORCID: initial.ORCID || null,
-      Phone: normalizedInitialPhones,
-      Mail: normalizedInitialMails,
-      Address: normalizedInitialAddresses,
-    })
-  );
+  const [baselineSnapshot, setBaselineSnapshot] = useState(() => JSON.stringify(normalizedInitialPayload));
 
   function inputClassName(hasError = false) {
     return hasError ? "edit-input edit-input-error" : "edit-input";
+  }
+
+  function clearOrcidError() {
+    setValidationErrors((prev) => {
+      if (!prev.orcid) return prev;
+      return { ...prev, orcid: undefined };
+    });
   }
 
   const currentSnapshot = useMemo(
@@ -219,25 +226,7 @@ export default function EditContactForm({ documentId, token, initial }: Props) {
       <section className="edit-form-card">
         <div className="edit-form-header">
           <h2>Kontaktdaten bearbeiten</h2>
-          <p>Hier koennen E-Mail-Adressen, Telefonnummern, ORCID und Adressen gepflegt werden.</p>
-        </div>
-
-        <div className="edit-field-block">
-          <label className="edit-label" htmlFor="orcid">
-            ORCID
-          </label>
-          <input
-            id="orcid"
-            className={inputClassName(Boolean(validationErrors.orcid))}
-            value={orcid}
-            onChange={(e) => setOrcid(e.target.value)}
-            inputMode="text"
-            autoCapitalize="off"
-            autoCorrect="off"
-            spellCheck={false}
-            placeholder="0000-0000-0000-0000"
-          />
-          {validationErrors.orcid ? <p className="edit-field-error">{validationErrors.orcid}</p> : null}
+          <p>Hier können E-Mail-Adressen, Telefonnummern, ORCID und Adressen gepflegt werden.</p>
         </div>
       </section>
 
@@ -263,7 +252,7 @@ export default function EditContactForm({ documentId, token, initial }: Props) {
           </div>
           <div className="edit-photo-controls">
             <label className="edit-label" htmlFor="profile-image">
-              Neues Bild waehlen
+              Neues Bild wählen
             </label>
             <input
               id="profile-image"
@@ -285,7 +274,7 @@ export default function EditContactForm({ documentId, token, initial }: Props) {
         <div className="edit-section-title-row">
           <h3>Telefonnummern</h3>
           <button type="button" className="edit-add-button" onClick={() => setPhones((prev) => [...prev, emptyPhone()])}>
-            Telefonnummer hinzufuegen
+            Telefonnummer hinzufügen
           </button>
         </div>
         <div className="edit-stack">
@@ -304,7 +293,7 @@ export default function EditContactForm({ documentId, token, initial }: Props) {
                       setPhones((prev) => prev.map((row, i) => (i === index ? { ...row, Label: e.target.value } : row)))
                     }
                   >
-                    <option value="">Bitte waehlen</option>
+                    <option value="">Bitte wählen</option>
                     {PHONE_LABEL_OPTIONS.map((option) => (
                       <option key={option.value} value={option.value}>
                         {option.label}
@@ -338,7 +327,7 @@ export default function EditContactForm({ documentId, token, initial }: Props) {
         <div className="edit-section-title-row">
           <h3>E-Mail-Adressen</h3>
           <button type="button" className="edit-add-button" onClick={() => setMails((prev) => [...prev, emptyMail()])}>
-            E-Mail hinzufuegen
+            E-Mail hinzufügen
           </button>
         </div>
         <div className="edit-stack">
@@ -357,7 +346,7 @@ export default function EditContactForm({ documentId, token, initial }: Props) {
                       setMails((prev) => prev.map((row, i) => (i === index ? { ...row, Label: e.target.value } : row)))
                     }
                   >
-                    <option value="">Bitte waehlen</option>
+                    <option value="">Bitte wählen</option>
                     {MAIL_LABEL_OPTIONS.map((option) => (
                       <option key={option.value} value={option.value}>
                         {option.label}
@@ -396,7 +385,7 @@ export default function EditContactForm({ documentId, token, initial }: Props) {
             className="edit-add-button"
             onClick={() => setAddresses((prev) => [...prev, emptyAddress()])}
           >
-            Adresse hinzufuegen
+            Adresse hinzufügen
           </button>
         </div>
         <div className="edit-stack">
@@ -415,7 +404,7 @@ export default function EditContactForm({ documentId, token, initial }: Props) {
                       setAddresses((prev) => prev.map((row, i) => (i === index ? { ...row, Label: e.target.value } : row)))
                     }
                   >
-                    <option value="">Bitte waehlen</option>
+                    <option value="">Bitte wählen</option>
                     {ADDRESS_LABEL_OPTIONS.map((option) => (
                       <option key={option.value} value={option.value}>
                         {option.label}
@@ -488,7 +477,7 @@ export default function EditContactForm({ documentId, token, initial }: Props) {
                       setAddresses((prev) => prev.map((row, i) => (i === index ? { ...row, Country: e.target.value } : row)))
                     }
                   >
-                    <option value="">Bitte waehlen</option>
+                    <option value="">Bitte wählen</option>
                     {COUNTRY_OPTIONS.map((country) => (
                       <option key={country} value={country}>
                         {country}
@@ -509,6 +498,33 @@ export default function EditContactForm({ documentId, token, initial }: Props) {
         </div>
       </section>
 
+      <section className="edit-form-card">
+        <div className="edit-section-title-row">
+          <h3>ORCID</h3>
+        </div>
+        <div className="edit-field-block">
+          <label className="edit-label" htmlFor="orcid">
+            ORCID
+          </label>
+          <input
+            id="orcid"
+            className={inputClassName(Boolean(validationErrors.orcid))}
+            value={orcid}
+            onChange={(e) => {
+              setOrcid(e.target.value);
+              clearOrcidError();
+            }}
+            onBlur={() => setOrcid((current) => normalizeOrcid(current))}
+            inputMode="text"
+            autoCapitalize="off"
+            autoCorrect="off"
+            spellCheck={false}
+            placeholder="0000-0000-0000-0000"
+          />
+          {validationErrors.orcid ? <p className="edit-field-error">{validationErrors.orcid}</p> : null}
+        </div>
+      </section>
+
       <div className="edit-submit-row">
         <button type="submit" className="edit-submit-button" disabled={saving || !isDirty}>
           {saving ? "Speichere..." : isDirty ? "Änderungen speichern" : "Keine Änderungen"}
@@ -520,7 +536,7 @@ export default function EditContactForm({ documentId, token, initial }: Props) {
               <Link href={`/contact/${documentId}`} className="edit-success-link">
                 Zur Profilseite
               </Link>
-              <span className="edit-success-note">Weitere Änderungen können jederzeit erneut gespeichert werden.</span>
+              <p className="edit-success-note">Weitere Änderungen können jederzeit erneut gespeichert werden.</p>
             </div>
           </div>
         ) : null}

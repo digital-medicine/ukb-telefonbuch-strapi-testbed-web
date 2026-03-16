@@ -21,7 +21,7 @@ export default async function ContactEditPage({
     <main className="person-page">
       <div className="person-page-header">
         <Link href={`/contact/${documentId}`} className="back-link">
-          Zurueck zum Kontakt
+          Zurück zum Kontakt
         </Link>
         <h1 className="person-page-title">Bearbeitungszugang</h1>
       </div>
@@ -30,7 +30,7 @@ export default async function ContactEditPage({
         <div className="person-detail-card">
           {tokenIsValid && person ? (
             <>
-              <h2 className="edit-state-title">Link gueltig fuer {formatPersonName(person)}</h2>
+              <h2 className="edit-state-title">Link gültig für {formatPersonName(person)}</h2>
               <p className="edit-state-copy">
                 Du kannst jetzt die freigegebenen Kontaktdaten anpassen und direkt speichern.
               </p>
@@ -48,9 +48,9 @@ export default async function ContactEditPage({
             </>
           ) : (
             <>
-              <h2 className="edit-state-title">Link ungueltig</h2>
+              <h2 className="edit-state-title">Link ungültig</h2>
               <p className="edit-state-copy">
-                Dieser Bearbeitungslink ist ungueltig oder wurde nicht korrekt uebermittelt.
+                Dieser Bearbeitungslink ist ungültig oder wurde nicht korrekt übermittelt.
               </p>
             </>
           )}
