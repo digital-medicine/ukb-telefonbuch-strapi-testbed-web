@@ -20,3 +20,13 @@ export const ADDRESS_LABEL_OPTIONS = [
   { value: "Private", label: "Privat" },
   { value: "Other", label: "Sonstiges" },
 ] as const;
+
+export function canonicalizeContactLabel(
+  value: string | null | undefined,
+  options: ReadonlyArray<{ value: string }>
+) {
+  const normalized = (value || "").trim().toLowerCase();
+  if (!normalized) return "";
+  const match = options.find((option) => option.value.trim().toLowerCase() === normalized);
+  return match?.value || "";
+}

@@ -1,9 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import { useMemo, useState } from "react";
 
-import { ADDRESS_LABEL_OPTIONS, MAIL_LABEL_OPTIONS, PHONE_LABEL_OPTIONS } from "@/lib/contact-labels";
+import {
+  ADDRESS_LABEL_OPTIONS,
+  MAIL_LABEL_OPTIONS,
+  PHONE_LABEL_OPTIONS,
+  canonicalizeContactLabel,
+} from "@/lib/contact-labels";
 import { COUNTRY_OPTIONS } from "@/lib/countries";
+import { validateSelfServicePayload, type ValidationErrors } from "@/lib/validation";
 
 type Phone = { Label?: string | null; Number?: string | null };
 type Mail = { Label?: string | null; Address?: string | null };
@@ -55,10 +63,25 @@ function emptyAddress(): Address {
 }
 
 export default function EditContactForm({ documentId, token, initial }: Props) {
+  const normalizedInitialPhones = (initial.Phone || []).map((entry) => ({
+    ...entry,
+    Label: canonicalizeContactLabel(entry?.Label, PHONE_LABEL_OPTIONS) || "",
+  }));
+  const normalizedInitialMails = (initial.Mail || []).map((entry) => ({
+    ...entry,
+    Label: canonicalizeContactLabel(entry?.Label, MAIL_LABEL_OPTIONS) || "",
+  }));
+  const normalizedInitialAddresses = (initial.Address || []).map((entry) => ({
+    ...entry,
+    Label: canonicalizeContactLabel(entry?.Label, ADDRESS_LABEL_OPTIONS) || "",
+  }));
+
   const [orcid, setOrcid] = useState(initial.ORCID || "");
-  const [phones, setPhones] = useState<Phone[]>(initial.Phone?.length ? initial.Phone : [emptyPhone()]);
-  const [mails, setMails] = useState<Mail[]>(initial.Mail?.length ? initial.Mail : [emptyMail()]);
-  const [addresses, setAddresses] = useState<Address[]>(initial.Address?.length ? initial.Address : [emptyAddress()]);
+  const [phones, setPhones] = useState<Phone[]>(normalizedInitialPhones.length ? normalizedInitialPhones : [emptyPhone()]);
+  const [mails, setMails] = useState<Mail[]>(normalizedInitialMails.length ? normalizedInitialMails : [emptyMail()]);
+  const [addresses, setAddresses] = useState<Address[]>(
+    normalizedInitialAddresses.length ? normalizedInitialAddresses : [emptyAddress()]
+  );
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoMessage, setPhotoMessage] = useState<string | null>(null);
   const [photoError, setPhotoError] = useState<string | null>(null);
@@ -72,12 +95,60 @@ export default function EditContactForm({ documentId, token, initial }: Props) {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
+  const [baselineSnapshot, setBaselineSnapshot] = useState(() =>
+    JSON.stringify({
+      ORCID: initial.ORCID || null,
+      Phone: normalizedInitialPhones,
+      Mail: normalizedInitialMails,
+      Address: normalizedInitialAddresses,
+    })
+  );
+
+  function inputClassName(hasError = false) {
+    return hasError ? "edit-input edit-input-error" : "edit-input";
+  }
+
+  const currentSnapshot = useMemo(
+    () =>
+      JSON.stringify(
+        validateSelfServicePayload({
+          ORCID: orcid,
+          Phone: phones,
+          Mail: mails,
+          Address: addresses,
+        }).sanitized
+      ),
+    [addresses, mails, orcid, phones]
+  );
+
+  const isDirty = currentSnapshot !== baselineSnapshot;
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (!isDirty) {
+      setMessage("Es gibt keine neuen Änderungen zum Speichern.");
+      setError(null);
+      return;
+    }
     setSaving(true);
     setMessage(null);
     setError(null);
+    setValidationErrors({});
+
+    const validation = validateSelfServicePayload({
+      ORCID: orcid,
+      Phone: phones,
+      Mail: mails,
+      Address: addresses,
+    });
+
+    if (validation.hasErrors) {
+      setValidationErrors(validation.errors);
+      setError("Bitte korrigiere die markierten Felder.");
+      setSaving(false);
+      return;
+    }
 
     try {
       const response = await fetch(`/api/people/${encodeURIComponent(documentId)}/self-service-update`, {
@@ -85,19 +156,25 @@ export default function EditContactForm({ documentId, token, initial }: Props) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           token,
-          ORCID: orcid,
-          Phone: phones,
-          Mail: mails,
-          Address: addresses,
+          ORCID: validation.sanitized.ORCID,
+          Phone: validation.sanitized.Phone,
+          Mail: validation.sanitized.Mail,
+          Address: validation.sanitized.Address,
         }),
       });
 
-      const json = (await response.json().catch(() => null)) as { error?: string } | null;
+      const json = (await response.json().catch(() => null)) as
+        | { error?: string; validation?: ValidationErrors }
+        | null;
       if (!response.ok) {
+        if (json?.validation) {
+          setValidationErrors(json.validation);
+        }
         throw new Error(json?.error || "Speichern fehlgeschlagen");
       }
 
-      setMessage("Die Angaben wurden gespeichert.");
+      setBaselineSnapshot(JSON.stringify(validation.sanitized));
+      setMessage("Die Änderungen wurden gespeichert. Du kannst jetzt zurück zum Profil.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Speichern fehlgeschlagen");
     } finally {
@@ -151,7 +228,7 @@ export default function EditContactForm({ documentId, token, initial }: Props) {
           </label>
           <input
             id="orcid"
-            className="edit-input"
+            className={inputClassName(Boolean(validationErrors.orcid))}
             value={orcid}
             onChange={(e) => setOrcid(e.target.value)}
             inputMode="text"
@@ -160,6 +237,7 @@ export default function EditContactForm({ documentId, token, initial }: Props) {
             spellCheck={false}
             placeholder="0000-0000-0000-0000"
           />
+          {validationErrors.orcid ? <p className="edit-field-error">{validationErrors.orcid}</p> : null}
         </div>
       </section>
 
@@ -169,7 +247,19 @@ export default function EditContactForm({ documentId, token, initial }: Props) {
         </div>
         <div className="edit-photo-block">
           <div className="edit-photo-preview">
-            {photoPreviewUrl ? <img src={photoPreviewUrl} alt="Aktuelles Profilbild" /> : <span>Kein Bild</span>}
+            {photoPreviewUrl ? (
+              <Image
+                src={photoPreviewUrl}
+                alt="Aktuelles Profilbild"
+                width={180}
+                height={220}
+                sizes="180px"
+                className="edit-photo-preview-image"
+                unoptimized
+              />
+            ) : (
+              <span>Kein Bild</span>
+            )}
           </div>
           <div className="edit-photo-controls">
             <label className="edit-label" htmlFor="profile-image">
@@ -201,11 +291,14 @@ export default function EditContactForm({ documentId, token, initial }: Props) {
         <div className="edit-stack">
           {phones.map((phone, index) => (
             <div className="edit-row-card" key={`phone-${index}`}>
+              {validationErrors.phones?.[index] ? (
+                <p className="edit-row-error">{validationErrors.phones[index]}</p>
+              ) : null}
               <div className="edit-grid-two">
                 <div className="edit-field-block">
                   <label className="edit-label">Label</label>
                   <select
-                    className="edit-input"
+                    className={inputClassName(Boolean(validationErrors.phones?.[index]))}
                     value={phone.Label || ""}
                     onChange={(e) =>
                       setPhones((prev) => prev.map((row, i) => (i === index ? { ...row, Label: e.target.value } : row)))
@@ -222,7 +315,7 @@ export default function EditContactForm({ documentId, token, initial }: Props) {
                 <div className="edit-field-block">
                   <label className="edit-label">Nummer</label>
                   <input
-                    className="edit-input"
+                    className={inputClassName(Boolean(validationErrors.phones?.[index]))}
                     type="tel"
                     inputMode="tel"
                     autoComplete="tel"
@@ -251,11 +344,14 @@ export default function EditContactForm({ documentId, token, initial }: Props) {
         <div className="edit-stack">
           {mails.map((mail, index) => (
             <div className="edit-row-card" key={`mail-${index}`}>
+              {validationErrors.mails?.[index] ? (
+                <p className="edit-row-error">{validationErrors.mails[index]}</p>
+              ) : null}
               <div className="edit-grid-two">
                 <div className="edit-field-block">
                   <label className="edit-label">Label</label>
                   <select
-                    className="edit-input"
+                    className={inputClassName(Boolean(validationErrors.mails?.[index]))}
                     value={mail.Label || ""}
                     onChange={(e) =>
                       setMails((prev) => prev.map((row, i) => (i === index ? { ...row, Label: e.target.value } : row)))
@@ -272,7 +368,7 @@ export default function EditContactForm({ documentId, token, initial }: Props) {
                 <div className="edit-field-block">
                   <label className="edit-label">Adresse</label>
                   <input
-                    className="edit-input"
+                    className={inputClassName(Boolean(validationErrors.mails?.[index]))}
                     type="email"
                     inputMode="email"
                     autoComplete="email"
@@ -306,11 +402,14 @@ export default function EditContactForm({ documentId, token, initial }: Props) {
         <div className="edit-stack">
           {addresses.map((address, index) => (
             <div className="edit-row-card" key={`address-${index}`}>
+              {validationErrors.addresses?.[index] ? (
+                <p className="edit-row-error">{validationErrors.addresses[index]}</p>
+              ) : null}
               <div className="edit-grid-address">
                 <div className="edit-field-block">
                   <label className="edit-label">Label</label>
                   <select
-                    className="edit-input"
+                    className={inputClassName(Boolean(validationErrors.addresses?.[index]))}
                     value={address.Label || ""}
                     onChange={(e) =>
                       setAddresses((prev) => prev.map((row, i) => (i === index ? { ...row, Label: e.target.value } : row)))
@@ -327,7 +426,7 @@ export default function EditContactForm({ documentId, token, initial }: Props) {
                 <div className="edit-field-block">
                   <label className="edit-label">Strasse</label>
                   <input
-                    className="edit-input"
+                    className={inputClassName(Boolean(validationErrors.addresses?.[index]))}
                     autoComplete="address-line1"
                     value={address.StreetName || ""}
                     onChange={(e) =>
@@ -338,7 +437,7 @@ export default function EditContactForm({ documentId, token, initial }: Props) {
                 <div className="edit-field-block">
                   <label className="edit-label">Hausnummer</label>
                   <input
-                    className="edit-input"
+                    className={inputClassName(Boolean(validationErrors.addresses?.[index]))}
                     autoComplete="address-line2"
                     value={address.StreetNumber || ""}
                     onChange={(e) =>
@@ -349,7 +448,7 @@ export default function EditContactForm({ documentId, token, initial }: Props) {
                 <div className="edit-field-block">
                   <label className="edit-label">PLZ</label>
                   <input
-                    className="edit-input"
+                    className={inputClassName(Boolean(validationErrors.addresses?.[index]))}
                     inputMode="numeric"
                     autoComplete="postal-code"
                     value={address.Zip || ""}
@@ -361,7 +460,7 @@ export default function EditContactForm({ documentId, token, initial }: Props) {
                 <div className="edit-field-block">
                   <label className="edit-label">Ort</label>
                   <input
-                    className="edit-input"
+                    className={inputClassName(Boolean(validationErrors.addresses?.[index]))}
                     autoComplete="address-level2"
                     value={address.City || ""}
                     onChange={(e) =>
@@ -372,7 +471,7 @@ export default function EditContactForm({ documentId, token, initial }: Props) {
                 <div className="edit-field-block">
                   <label className="edit-label">Bundesland</label>
                   <input
-                    className="edit-input"
+                    className={inputClassName(Boolean(validationErrors.addresses?.[index]))}
                     autoComplete="address-level1"
                     value={address.State || ""}
                     onChange={(e) =>
@@ -383,7 +482,7 @@ export default function EditContactForm({ documentId, token, initial }: Props) {
                 <div className="edit-field-block">
                   <label className="edit-label">Land</label>
                   <select
-                    className="edit-input"
+                    className={inputClassName(Boolean(validationErrors.addresses?.[index]))}
                     value={address.Country || ""}
                     onChange={(e) =>
                       setAddresses((prev) => prev.map((row, i) => (i === index ? { ...row, Country: e.target.value } : row)))
@@ -411,10 +510,20 @@ export default function EditContactForm({ documentId, token, initial }: Props) {
       </section>
 
       <div className="edit-submit-row">
-        <button type="submit" className="edit-submit-button" disabled={saving}>
-          {saving ? "Speichere..." : "Aenderungen speichern"}
+        <button type="submit" className="edit-submit-button" disabled={saving || !isDirty}>
+          {saving ? "Speichere..." : isDirty ? "Änderungen speichern" : "Keine Änderungen"}
         </button>
-        {message ? <p className="edit-request-success">{message}</p> : null}
+        {message ? (
+          <div className="edit-success-panel">
+            <p className="edit-request-success">{message}</p>
+            <div className="edit-success-actions">
+              <Link href={`/contact/${documentId}`} className="edit-success-link">
+                Zur Profilseite
+              </Link>
+              <span className="edit-success-note">Weitere Änderungen können jederzeit erneut gespeichert werden.</span>
+            </div>
+          </div>
+        ) : null}
         {error ? <p className="edit-request-error">{error}</p> : null}
       </div>
     </form>

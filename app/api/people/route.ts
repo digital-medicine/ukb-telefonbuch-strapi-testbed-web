@@ -25,6 +25,94 @@ function labelEquals(value: unknown, expected: string) {
   return clean(value).toLowerCase() === clean(expected).toLowerCase();
 }
 
+function addTokenSearchFilters(sp: URLSearchParams, tokens: string[]) {
+  tokens.forEach((token, tokenIndex) => {
+    const base = `filters[$and][${tokenIndex}][$or]`;
+    sp.set(`${base}[0][Firstname][$containsi]`, token);
+    sp.set(`${base}[1][Lastname][$containsi]`, token);
+    sp.set(`${base}[2][MailIdentifier][$containsi]`, token);
+    sp.set(`${base}[3][Mail][Address][$containsi]`, token);
+    sp.set(`${base}[4][Phone][Number][$containsi]`, token);
+    sp.set(`${base}[5][Organizations][Name][$containsi]`, token);
+    sp.set(`${base}[6][Organizations][ShortName][$containsi]`, token);
+    sp.set(`${base}[7][PrimaryOrganization][Name][$containsi]`, token);
+    sp.set(`${base}[8][PrimaryOrganization][ShortName][$containsi]`, token);
+  });
+}
+
+function normalizeSearchValue(value: unknown) {
+  return clean(value).toLowerCase();
+}
+
+function scorePersonMatch(person: any, tokens: string[], rawQuery: string) {
+  const fullName = normalizeSearchValue(
+    [person.Title, person.Firstname, person.Lastname].filter(Boolean).join(" ")
+  );
+  const firstName = normalizeSearchValue(person.Firstname);
+  const lastName = normalizeSearchValue(person.Lastname);
+  const identifier = normalizeSearchValue(person.MailIdentifier);
+  const mailValues = (person.Mail || []).map((entry: any) => normalizeSearchValue(entry?.Address));
+  const phoneValues = (person.Phone || []).map((entry: any) => normalizeSearchValue(entry?.Number));
+  const organizationValues = (person.Organizations || []).flatMap((org: any) => [
+    normalizeSearchValue(org?.Name),
+    normalizeSearchValue(org?.ShortName),
+  ]);
+
+  let score = 0;
+  const query = normalizeSearchValue(rawQuery);
+
+  if (query) {
+    if (fullName === query) score += 1000;
+    else if (fullName.startsWith(query)) score += 700;
+    else if (fullName.includes(query)) score += 450;
+
+    if (identifier === query) score += 900;
+    else if (identifier.includes(query)) score += 350;
+
+    for (const mail of mailValues) {
+      if (!mail) continue;
+      if (mail === query) score += 850;
+      else if (mail.startsWith(query)) score += 500;
+      else if (mail.includes(query)) score += 300;
+    }
+
+    for (const phone of phoneValues) {
+      if (!phone) continue;
+      if (phone === query) score += 820;
+      else if (phone.includes(query)) score += 280;
+    }
+  }
+
+  for (const token of tokens.map((entry) => normalizeSearchValue(entry))) {
+    if (!token) continue;
+    if (firstName === token) score += 260;
+    else if (firstName.startsWith(token)) score += 180;
+    else if (firstName.includes(token)) score += 100;
+
+    if (lastName === token) score += 320;
+    else if (lastName.startsWith(token)) score += 220;
+    else if (lastName.includes(token)) score += 120;
+
+    if (identifier.includes(token)) score += 90;
+
+    for (const mail of mailValues) {
+      if (mail.includes(token)) score += 80;
+    }
+
+    for (const phone of phoneValues) {
+      if (phone.includes(token)) score += 85;
+    }
+
+    for (const org of organizationValues) {
+      if (!org) continue;
+      if (org === token) score += 40;
+      else if (org.includes(token)) score += 20;
+    }
+  }
+
+  return score;
+}
+
 function unwrapEntity(input: any) {
   if (!input) return null;
   if (input?.data) return unwrapEntity(input.data);
@@ -61,41 +149,81 @@ function normalizeMedia(input: any) {
   };
 }
 
-function normalizePublicationAuthor(input: any) {
-  const attrs = input?.attributes ?? input;
-  const pubRaw =
-    attrs?.Publication?.data?.attributes
-      ? { id: attrs.Publication.data.id, ...attrs.Publication.data.attributes }
-      : attrs?.Publication ?? null;
+function normalizePersonItem(it: any) {
+  const attrs = it.attributes ?? it;
 
-  const personRaw =
-    attrs?.Person?.data?.attributes
-      ? { id: attrs.Person.data.id, ...attrs.Person.data.attributes }
-      : attrs?.Person ?? null;
+  const secretariats = (attrs.Secretariats ?? attrs.secretariats ?? [])
+    .map((s: any) => normalizePersonRef(s))
+    .filter(Boolean);
+
+  const baseOrganizations = (attrs.Organizations ?? attrs.organizations ?? [])
+    .map((entry: any) => normalizeOrganizationRef(entry))
+    .filter(Boolean);
+
+  const primaryOrganization = normalizeOrganizationRef(
+    attrs.PrimaryOrganization ?? attrs.primaryOrganization
+  );
+
+  const primarySupervisor = normalizePersonRef(attrs.PrimarySupervisor ?? attrs.primarySupervisor);
+
+  const supervisors = (attrs.Supervisors ?? attrs.supervisors ?? [])
+    .map((entry: any) => normalizePersonRef(entry))
+    .filter(Boolean);
+
+  const leadershipLinks = (attrs.OrganizationLeadershipLinks ?? attrs.organizationLeadershipLinks ?? [])
+    .map((entry: any) => normalizeLeadershipLink(entry))
+    .filter(Boolean);
+
+  let organizations = mergeOrganizations(baseOrganizations, primaryOrganization, leadershipLinks);
+
+  if (!organizations.length) {
+    const poRaw = attrs.PrimaryOrganization ?? attrs.primaryOrganization;
+    const poName =
+      clean(poRaw?.Name ?? poRaw?.name ?? poRaw?.data?.Name ?? poRaw?.data?.attributes?.Name ?? poRaw?.attributes?.Name) ||
+      "";
+    const poShort =
+      clean(
+        poRaw?.ShortName ??
+          poRaw?.shortName ??
+          poRaw?.data?.ShortName ??
+          poRaw?.data?.attributes?.ShortName ??
+          poRaw?.attributes?.ShortName
+      ) || null;
+
+    if (poName) {
+      organizations = [
+        {
+          id: poRaw?.id ?? poRaw?.data?.id ?? null,
+          documentId: poRaw?.documentId ?? poRaw?.data?.documentId ?? null,
+          Name: poName,
+          ShortName: poShort,
+          AffiliationRole: null,
+          AffiliationPrimary: true,
+          LeadershipRoles: leadershipLinks.map((l: any) => l?.Role).filter(Boolean),
+          LeadershipPrimary: leadershipLinks.some((l: any) => Boolean(l?.Primary)),
+          SortOrder: 0,
+        },
+      ];
+    }
+  }
 
   return {
-    id: input?.id ?? attrs?.id ?? null,
-    AuthorName: attrs?.AuthorName ?? null,
-    AuthorOrder: attrs?.AuthorOrder ?? null,
-    IsCorresponding: attrs?.IsCorresponding ?? null,
-    PersonId: personRaw?.id ?? null,
-    PersonDocumentId: personRaw?.documentId ?? null,
-    Publication: pubRaw
-      ? {
-          id: pubRaw.id ?? null,
-          Title: pubRaw.Title ?? null,
-          Abstract: pubRaw.Abstract ?? null,
-          DOI: pubRaw.DOI ?? null,
-          Type: pubRaw.Type ?? null,
-          PublishedDate: pubRaw.PublishedDate ?? null,
-          Journal: pubRaw.Journal ?? null,
-          Volume: pubRaw.Volume ?? null,
-          Issue: pubRaw.Issue ?? null,
-          Pages: pubRaw.Pages ?? null,
-          URL: pubRaw.URL ?? null,
-          Source: pubRaw.Source ?? null,
-        }
-      : null,
+    id: it.id,
+    documentId: it.documentId ?? attrs.documentId ?? null,
+    Title: attrs.Title ?? attrs.title ?? null,
+    Firstname: attrs.Firstname ?? attrs.firstname ?? null,
+    Lastname: attrs.Lastname ?? attrs.lastname ?? null,
+    MailIdentifier: attrs.MailIdentifier ?? attrs.mailIdentifier ?? null,
+    WebexEnabled: Boolean(attrs.WebexEnabled ?? attrs.webexEnabled),
+    WebexEmail: attrs.WebexEmail ?? attrs.webexEmail ?? null,
+    Phone: attrs.Phone ?? attrs.phone ?? [],
+    Mail: attrs.Mail ?? attrs.mail ?? [],
+    Address: attrs.Address ?? attrs.address ?? [],
+    EmployeePicture: normalizeMedia(attrs.EmployeePicture ?? attrs.employeePicture ?? null),
+    Secretariats: secretariats,
+    PrimarySupervisor: primarySupervisor,
+    Supervisors: supervisors,
+    Organizations: organizations,
   };
 }
 
@@ -245,6 +373,10 @@ export async function GET(req: NextRequest) {
   const label = (searchParams.get("label") || "").trim();
   const page = Math.max(1, Number(searchParams.get("page") || "1") || 1);
   const pageSize = Math.min(200, Math.max(1, Number(searchParams.get("pageSize") || "50") || 50));
+  const queryTokens = q
+    .split(/\s+/)
+    .map((token) => token.trim())
+    .filter(Boolean);
 
   const sp = new URLSearchParams();
   sp.set("status", "draft");
@@ -291,111 +423,56 @@ export async function GET(req: NextRequest) {
     sp.set("filters[$or][2][Firstname][$containsi]", identifier);
     sp.set("filters[$or][3][Lastname][$containsi]", identifier);
     sp.set("pagination[pageSize]", "10");
-  } else if (q) {
-    sp.set("filters[$or][0][Firstname][$containsi]", q);
-    sp.set("filters[$or][1][Lastname][$containsi]", q);
-    sp.set("filters[$or][2][MailIdentifier][$containsi]", q);
+  } else if (queryTokens.length) {
+    addTokenSearchFilters(sp, queryTokens);
   }
 
   if (label) {
     sp.set("filters[Phone][Label][$eq]", label);
   }
 
-  const url = `${STRAPI_URL}/api/people?${sp.toString()}`;
+  async function fetchPeoplePage(pageNumber: number, size: number) {
+    const pageParams = new URLSearchParams(sp);
+    pageParams.set("pagination[page]", String(pageNumber));
+    pageParams.set("pagination[pageSize]", String(size));
 
-  const r = await fetch(url, {
-    headers: {
-      "Content-Type": "application/json",
-      ...authHeaders(),
-    },
-    cache: "no-store",
-  });
+    const response = await fetch(`${STRAPI_URL}/api/people?${pageParams.toString()}`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...authHeaders(),
+      },
+      cache: "no-store",
+    });
 
-  if (!r.ok) {
-    const txt = await r.text().catch(() => "");
-    return Response.json({ error: `Strapi HTTP ${r.status}`, details: txt }, { status: 502 });
-  }
-
-  const json = await r.json();
-  const raw = json.data || [];
-
-  const items = raw.map((it: any) => {
-    const attrs = it.attributes ?? it;
-
-    const secretariats = (attrs.Secretariats ?? attrs.secretariats ?? [])
-      .map((s: any) => normalizePersonRef(s))
-      .filter(Boolean);
-
-    const baseOrganizations = (attrs.Organizations ?? attrs.organizations ?? [])
-      .map((entry: any) => normalizeOrganizationRef(entry))
-      .filter(Boolean);
-
-    const primaryOrganization = normalizeOrganizationRef(
-      attrs.PrimaryOrganization ?? attrs.primaryOrganization
-    );
-
-    const primarySupervisor = normalizePersonRef(attrs.PrimarySupervisor ?? attrs.primarySupervisor);
-
-    const supervisors = (attrs.Supervisors ?? attrs.supervisors ?? [])
-      .map((entry: any) => normalizePersonRef(entry))
-      .filter(Boolean);
-
-    const leadershipLinks = (attrs.OrganizationLeadershipLinks ?? attrs.organizationLeadershipLinks ?? [])
-      .map((entry: any) => normalizeLeadershipLink(entry))
-      .filter(Boolean);
-
-    let organizations = mergeOrganizations(baseOrganizations, primaryOrganization, leadershipLinks);
-
-    if (!organizations.length) {
-      const poRaw = attrs.PrimaryOrganization ?? attrs.primaryOrganization;
-      const poName =
-        clean(poRaw?.Name ?? poRaw?.name ?? poRaw?.data?.Name ?? poRaw?.data?.attributes?.Name ?? poRaw?.attributes?.Name) ||
-        "";
-      const poShort =
-        clean(
-          poRaw?.ShortName ??
-            poRaw?.shortName ??
-            poRaw?.data?.ShortName ??
-            poRaw?.data?.attributes?.ShortName ??
-            poRaw?.attributes?.ShortName
-        ) || null;
-
-      if (poName) {
-        organizations = [
-          {
-            id: poRaw?.id ?? poRaw?.data?.id ?? null,
-            documentId: poRaw?.documentId ?? poRaw?.data?.documentId ?? null,
-            Name: poName,
-            ShortName: poShort,
-            AffiliationRole: null,
-            AffiliationPrimary: true,
-            LeadershipRoles: leadershipLinks.map((l: any) => l?.Role).filter(Boolean),
-            LeadershipPrimary: leadershipLinks.some((l: any) => Boolean(l?.Primary)),
-            SortOrder: 0,
-          },
-        ];
-      }
+    if (!response.ok) {
+      const txt = await response.text().catch(() => "");
+      throw new Error(JSON.stringify({ status: response.status, details: txt }));
     }
 
-    return {
-      id: it.id,
-      documentId: it.documentId ?? attrs.documentId ?? null,
-      Title: attrs.Title ?? attrs.title ?? null,
-      Firstname: attrs.Firstname ?? attrs.firstname ?? null,
-      Lastname: attrs.Lastname ?? attrs.lastname ?? null,
-      MailIdentifier: attrs.MailIdentifier ?? attrs.mailIdentifier ?? null,
-      WebexEnabled: Boolean(attrs.WebexEnabled ?? attrs.webexEnabled),
-      WebexEmail: attrs.WebexEmail ?? attrs.webexEmail ?? null,
-      Phone: attrs.Phone ?? attrs.phone ?? [],
-      Mail: attrs.Mail ?? attrs.mail ?? [],
-      Address: attrs.Address ?? attrs.address ?? [],
-      EmployeePicture: normalizeMedia(attrs.EmployeePicture ?? attrs.employeePicture ?? null),
-      Secretariats: secretariats,
-      PrimarySupervisor: primarySupervisor,
-      Supervisors: supervisors,
-      Organizations: organizations,
-    };
-  });
+    return response.json();
+  }
+
+  let json: any;
+  let items: any[];
+  let paginationMeta: { page: number; pageSize: number; pageCount?: number; total?: number };
+
+  try {
+    json = await fetchPeoplePage(page, pageSize);
+    items = (json.data || []).map((it: any) => normalizePersonItem(it));
+    paginationMeta = json.meta?.pagination ?? { page, pageSize };
+  } catch (error) {
+    const details = error instanceof Error ? error.message : String(error);
+    let parsedStatus = 502;
+    let parsedDetails = details;
+
+    try {
+      const parsed = JSON.parse(details);
+      parsedStatus = Number(parsed.status) || 502;
+      parsedDetails = parsed.details || details;
+    } catch {}
+
+    return Response.json({ error: `Strapi HTTP ${parsedStatus}`, details: parsedDetails }, { status: 502 });
+  }
 
   // Secretariats are relation targets and may be returned without fully populated components
   // depending on Strapi populate resolution. Resolve them explicitly by documentId.
@@ -451,58 +528,27 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  const pubMap = new Map<string, any[]>();
-  const personDocumentIds: string[] = items
-    .map((p: any) => clean(p.documentId))
-    .filter((id: string) => Boolean(id));
-
-  if (personDocumentIds.length) {
-    const spPub = new URLSearchParams();
-    personDocumentIds.forEach((docId: string, i: number) =>
-      spPub.set(`filters[Person][documentId][$in][${i}]`, docId)
-    );
-    spPub.set("populate[Publication]", "true");
-    spPub.set("populate[Person]", "true");
-    spPub.set("pagination[page]", "1");
-    spPub.set("pagination[pageSize]", "200");
-    spPub.set("sort[0]", "Publication.PublishedDate:desc");
-
-    const pubUrl = `${STRAPI_URL}/api/publication-authors?${spPub.toString()}`;
-    const pr = await fetch(pubUrl, {
-      headers: {
-        "Content-Type": "application/json",
-        ...authHeaders(),
-      },
-      cache: "no-store",
-    });
-
-    if (pr.ok) {
-      const pjson = await pr.json();
-      const praw = pjson.data || [];
-      for (const pa of praw) {
-        const norm = normalizePublicationAuthor(pa);
-        const personDocumentId = clean(norm.PersonDocumentId);
-        if (!personDocumentId) continue;
-        if (!pubMap.has(personDocumentId)) pubMap.set(personDocumentId, []);
-        pubMap.get(personDocumentId)!.push(norm);
-      }
-      for (const list of pubMap.values()) {
-        list.sort((a, b) => {
-          const ad = a?.Publication?.PublishedDate || "";
-          const bd = b?.Publication?.PublishedDate || "";
-          return bd.localeCompare(ad);
-        });
-      }
-    }
-  }
-
   const itemsWithPubs = items.map((p: any) => ({
     ...p,
-    Publications: pubMap.get(clean(p.documentId)) ?? [],
+    Publications: [],
   }));
+
+  if (!identifier && queryTokens.length) {
+    itemsWithPubs.sort((a: any, b: any) => {
+      const scoreA = scorePersonMatch(a, queryTokens, q);
+      const scoreB = scorePersonMatch(b, queryTokens, q);
+      if (scoreA !== scoreB) return scoreB - scoreA;
+
+      const lastA = clean(a.Lastname).toLowerCase();
+      const lastB = clean(b.Lastname).toLowerCase();
+      if (lastA !== lastB) return lastA.localeCompare(lastB);
+
+      return clean(a.Firstname).toLowerCase().localeCompare(clean(b.Firstname).toLowerCase());
+    });
+  }
 
   return Response.json({
     items: itemsWithPubs,
-    pagination: json.meta?.pagination ?? { page, pageSize },
+    pagination: paginationMeta,
   });
 }

@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -68,6 +69,8 @@ export default async function ContactDetailPage({
     null;
   const publicationCount = person.Publications?.length || 0;
   const addressCount = person.Address?.length || 0;
+  const mailCount = person.Mail?.length || 0;
+  const phoneCount = person.Phone?.length || 0;
   const businessPhone =
     (person.Phone || []).find((entry) => ["business", "business mobile"].includes((entry.Label || "").toLowerCase()))?.Number;
 
@@ -87,7 +90,15 @@ export default async function ContactDetailPage({
         <div className="person-hero-card">
           <div className="person-hero-media">
             {photo ? (
-              <img src={photo} alt={person.EmployeePicture?.alternativeText || formatPersonName(person)} />
+              <Image
+                src={photo}
+                alt={person.EmployeePicture?.alternativeText || formatPersonName(person)}
+                width={280}
+                height={320}
+                sizes="(max-width: 900px) 100vw, 280px"
+                className="person-hero-image"
+                unoptimized
+              />
             ) : (
               <div className="person-hero-fallback">{formatPersonName(person).charAt(0)}</div>
             )}
@@ -103,13 +114,19 @@ export default async function ContactDetailPage({
             </div>
 
             <div className="person-hero-facts">
-              {businessMail ? <span className="person-fact">Business-Mail vorhanden</span> : null}
-              {businessPhone ? <span className="person-fact">Business-Telefon vorhanden</span> : null}
+              {businessMail ? <span className="person-fact">✉️ Business-Mail vorhanden</span> : null}
+              {businessPhone ? <span className="person-fact">📞 Business-Telefon vorhanden</span> : null}
+              {phoneCount ? <span className="person-fact">{phoneCount} Telefonnummern</span> : null}
+              {mailCount ? <span className="person-fact">{mailCount} E-Mail-Adressen</span> : null}
               {publicationCount ? <span className="person-fact">{publicationCount} Publikationen</span> : null}
               {addressCount ? <span className="person-fact">{addressCount} Adressen</span> : null}
             </div>
 
-            {businessMail ? <EditLinkButton documentId={documentId} /> : null}
+            {businessMail ? (
+              <div className="person-hero-action">
+                <EditLinkButton documentId={documentId} />
+              </div>
+            ) : null}
           </div>
         </div>
       </section>
@@ -117,7 +134,10 @@ export default async function ContactDetailPage({
       {(person.Secretariats || []).length ? (
         <section className="person-detail-section">
           <div className="person-detail-card person-detail-card-wide">
-            <h3>🧑‍💼 Sekretariat</h3>
+            <div className="person-section-heading">
+              <h3>🧑‍💼 Sekretariat</h3>
+              <p>Kontaktpunkte und zugehörige Organisationen des Sekretariats.</p>
+            </div>
             <div className="contact-block-list">
               {(person.Secretariats || []).map((secretariat, index) => {
                 const contact = primarySecretariatContact(secretariat);
@@ -149,7 +169,10 @@ export default async function ContactDetailPage({
 
       <section className="person-detail-section">
         <div className="person-detail-card person-detail-card-wide">
-          <h3>📞 Telefon</h3>
+          <div className="person-section-heading">
+            <h3>📞 Telefon</h3>
+            <p>Alle hinterlegten Rufnummern dieser Person.</p>
+          </div>
           {(person.Phone || []).length ? (
             <div className="contact-block-list">
               {(person.Phone || []).map((entry, index) => (
@@ -169,7 +192,10 @@ export default async function ContactDetailPage({
 
       <section className="person-detail-section">
         <div className="person-detail-card person-detail-card-wide">
-          <h3>✉️ E-Mail</h3>
+          <div className="person-section-heading">
+            <h3>✉️ E-Mail</h3>
+            <p>Direkte Kontaktadressen mit Mail-Links.</p>
+          </div>
           {(person.Mail || []).length ? (
             <div className="contact-block-list">
               {(person.Mail || []).map((entry, index) => (
@@ -189,7 +215,10 @@ export default async function ContactDetailPage({
 
       <section className="person-detail-section">
         <div className="person-detail-card person-detail-card-wide">
-          <h3>🏠 Adressen</h3>
+          <div className="person-section-heading">
+            <h3>🏠 Adressen</h3>
+            <p>Postadressen in vollständiger, lesbarer Darstellung.</p>
+          </div>
           {(person.Address || []).length ? (
             <div className="contact-block-list">
               {(person.Address || []).map((entry, index) => (
@@ -211,7 +240,10 @@ export default async function ContactDetailPage({
 
       <section className="person-detail-section">
         <div className="person-detail-card person-detail-card-wide">
-          <h3>🏢 Organisationen</h3>
+          <div className="person-section-heading">
+            <h3>🏢 Organisationen</h3>
+            <p>Zuordnungen, Primärorganisation und Leitungsfunktionen.</p>
+          </div>
           {(person.Organizations || []).length ? (
             <ul className="organization-list">
               {(person.Organizations || []).map((org, index) => (
@@ -233,7 +265,10 @@ export default async function ContactDetailPage({
       {(person.Publications || []).length ? (
         <section className="person-detail-section">
           <div className="person-detail-card">
-            <h3>📚 Publikationen</h3>
+            <div className="person-section-heading">
+              <h3>📚 Publikationen</h3>
+              <p>Verknüpfte Veröffentlichungen mit externem Link.</p>
+            </div>
             <div className="pub-list">
               {(person.Publications || []).map((link) => {
                 const pub = link.Publication;

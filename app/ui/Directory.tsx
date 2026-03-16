@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
@@ -156,6 +157,34 @@ function formatOrgPreview(list: OrganizationInfo[] | null | undefined) {
   return `${names.join(", ")}${suffix}`;
 }
 
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function highlightText(text: string, query: string) {
+  const value = text || "";
+  const tokens = query
+    .split(/\s+/)
+    .map((token) => token.trim())
+    .filter(Boolean);
+
+  if (!value || !tokens.length) return value;
+
+  const pattern = tokens.map(escapeRegExp).join("|");
+  if (!pattern) return value;
+
+  const parts = value.split(new RegExp(`(${pattern})`, "gi"));
+  return parts.map((part, index) =>
+    tokens.some((token) => part.toLowerCase() === token.toLowerCase()) ? (
+      <mark key={`${part}-${index}`} className="search-highlight">
+        {part}
+      </mark>
+    ) : (
+      <span key={`${part}-${index}`}>{part}</span>
+    )
+  );
+}
+
 export default function Directory({ initialQuery = "" }: { initialQuery?: string }) {
   const [q, setQ] = useState(initialQuery);
   const [sortBy, setSortBy] = useState<"Lastname" | "Firstname">("Lastname");
@@ -302,13 +331,32 @@ export default function Directory({ initialQuery = "" }: { initialQuery?: string
               <summary className="person-summary">
                 <div className="person-head">
                   <div className="person-avatar">
-                    {pic ? <img src={pic} alt={alt} /> : <div className="person-avatar-fallback">{fmtName(p)[0]}</div>}
+                    {pic ? (
+                      <Image
+                        src={pic}
+                        alt={alt}
+                        width={56}
+                        height={56}
+                        sizes="56px"
+                        className="person-avatar-image"
+                        unoptimized
+                      />
+                    ) : (
+                      <div className="person-avatar-fallback">{fmtName(p)[0]}</div>
+                    )}
                   </div>
                   <div className="person-title">
-                    <div className="person-name">{fmtName(p)}</div>
+                    <div className="person-name">{highlightText(fmtName(p), q)}</div>
                     <div className="person-meta">
-                      {previewPhone?.Number ? `📞 ${previewPhone.Number}` : "keine Nummer"} ·{" "}
-                      {previewMail?.Address ? `✉️ ${previewMail.Address}` : "keine E‑Mail"} ·{" "}
+                      {previewPhone?.Number ? (
+                        <>
+                          📞 {highlightText(previewPhone.Number, q)}
+                        </>
+                      ) : (
+                        "keine Nummer"
+                      )}{" "}
+                      ·{" "}
+                      {previewMail?.Address ? <>✉️ {highlightText(previewMail.Address, q)}</> : "keine E‑Mail"} ·{" "}
                       {(p.Address || []).length ? `${(p.Address || []).length} Adresse` : "keine Adressen"}
                       {webexLink ? <> · 💬 Webex</> : null}
                     </div>
@@ -316,7 +364,7 @@ export default function Directory({ initialQuery = "" }: { initialQuery?: string
                       <div className="person-meta person-meta-extra">Sekretariat: {sekretariatPreview}</div>
                     ) : null}
                     {orgPreview ? (
-                      <div className="person-meta person-meta-extra">Organisation: {orgPreview}</div>
+                      <div className="person-meta person-meta-extra">Organisation: {highlightText(orgPreview, q)}</div>
                     ) : null}
                   </div>
                 </div>
@@ -349,7 +397,7 @@ export default function Directory({ initialQuery = "" }: { initialQuery?: string
                           return (
                             <li key={idx}>
                               <span>{label}:</span>{" "}
-                              {number ? <a href={telHref}>{number}</a> : <em>—</em>}
+                              {number ? <a href={telHref}>{highlightText(number, q)}</a> : <em>—</em>}
                             </li>
                           );
                         })}
@@ -488,7 +536,7 @@ export default function Directory({ initialQuery = "" }: { initialQuery?: string
                 {p.documentId ? (
                   <div className="person-actions person-actions-bottom">
                     <Link href={`/contact/${p.documentId}`} className="person-link-button">
-                      Profil oeffnen
+                      Profil öffnen
                     </Link>
                   </div>
                 ) : null}
