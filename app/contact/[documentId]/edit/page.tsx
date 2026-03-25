@@ -18,20 +18,23 @@ export default async function ContactEditPage({
   const tokenIsValid = Boolean(person && token && person.Secret && hashSecret(token) === person.Secret);
 
   return (
-    <main className="person-page">
-      <div className="person-page-header">
-        <Link href={`/contact/${documentId}`} className="back-link">
+    <main className="mx-auto max-w-[1120px] px-6 pb-14 pt-8 text-[var(--ink)]">
+      <div className="mb-6 grid gap-3">
+        <Link
+          href={`/contact/${documentId}`}
+          className="inline-flex w-fit items-center justify-center rounded-[10px] border border-[#d4ddd9] bg-[rgba(255,255,255,0.8)] px-3 py-2 font-semibold text-[var(--ink)] no-underline backdrop-blur-[8px] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
+        >
           Zurück zum Kontakt
         </Link>
-        <h1 className="person-page-title">Bearbeitungszugang</h1>
+        <h1 className="m-0 text-[clamp(2rem,3vw,2.8rem)] tracking-[-0.02em] text-[#111318]">Bearbeitungszugang</h1>
       </div>
 
-      <section className="person-detail-section">
-        <div className="person-detail-card">
+      <section className="mb-[18px]">
+        <div className="rounded-[18px] border border-[var(--card-border)] bg-[linear-gradient(180deg,#ffffff,#fcfcfd)] p-[18px] text-[#111318] shadow-[0_12px_28px_rgba(15,23,42,0.05)]">
           {tokenIsValid && person ? (
             <>
-              <h2 className="edit-state-title">Link gültig für {formatPersonName(person)}</h2>
-              <p className="edit-state-copy">
+              <h2 className="mb-[10px] mt-0 text-[#111318]">Link gültig für {formatPersonName(person)}</h2>
+              <p className="m-0 text-[0.95rem] text-[#2f3640]">
                 Du kannst jetzt die freigegebenen Kontaktdaten anpassen und direkt speichern.
               </p>
               <EditContactForm
@@ -48,8 +51,8 @@ export default async function ContactEditPage({
             </>
           ) : (
             <>
-              <h2 className="edit-state-title">Link ungültig</h2>
-              <p className="edit-state-copy">
+              <h2 className="mb-[10px] mt-0 text-[#111318]">Link ungültig</h2>
+              <p className="m-0 text-[0.95rem] text-[#2f3640]">
                 Dieser Bearbeitungslink ist ungültig oder wurde nicht korrekt übermittelt.
               </p>
             </>

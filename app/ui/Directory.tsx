@@ -258,34 +258,46 @@ export default function Directory({ initialQuery = "" }: { initialQuery?: string
   }, [q, sortBy, dir, labelFilter]);
 
   return (
-    <section className="directory">
-      <div className="directory-toolbar">
+    <section className="mx-auto my-7 max-w-[1100px] px-0">
+      <div className="mb-[18px] grid gap-[10px] rounded-xl border border-[var(--card-border)] bg-white p-[14px] shadow-[0_10px_22px_rgba(18,24,40,0.06)] md:grid-cols-[minmax(220px,1.4fr)_repeat(3,minmax(140px,1fr))_auto]">
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Nach Name suchen…"
-          className="directory-search"
+          className="min-w-[220px] rounded-[10px] border border-[#dfe2e7] bg-white px-3 py-2.5 text-[var(--ink)] outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[rgba(31,111,91,0.14)]"
         />
 
-        <label className="directory-label">
+        <label className="grid gap-1.5 text-[0.86rem] text-[var(--ink-soft)]">
           Sort:
-          <select value={sortBy} onChange={(e) => setSortBy(e.target.value as any)} className="directory-select">
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as any)}
+            className="rounded-[10px] border border-[#dfe2e7] bg-white px-2.5 py-2 text-[var(--ink)] outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[rgba(31,111,91,0.14)]"
+          >
             <option value="Lastname">Nachname</option>
             <option value="Firstname">Vorname</option>
           </select>
         </label>
 
-        <label className="directory-label">
+        <label className="grid gap-1.5 text-[0.86rem] text-[var(--ink-soft)]">
           Richtung:
-          <select value={dir} onChange={(e) => setDir(e.target.value as any)} className="directory-select">
+          <select
+            value={dir}
+            onChange={(e) => setDir(e.target.value as any)}
+            className="rounded-[10px] border border-[#dfe2e7] bg-white px-2.5 py-2 text-[var(--ink)] outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[rgba(31,111,91,0.14)]"
+          >
             <option value="asc">A → Z</option>
             <option value="desc">Z → A</option>
           </select>
         </label>
 
-        <label className="directory-label">
+        <label className="grid gap-1.5 text-[0.86rem] text-[var(--ink-soft)]">
           Phone-Label:
-          <select value={labelFilter} onChange={(e) => setLabelFilter(e.target.value)} className="directory-select">
+          <select
+            value={labelFilter}
+            onChange={(e) => setLabelFilter(e.target.value)}
+            className="rounded-[10px] border border-[#dfe2e7] bg-white px-2.5 py-2 text-[var(--ink)] outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[rgba(31,111,91,0.14)]"
+          >
             <option value="">(alle)</option>
             {labelOptions.map((l) => (
               <option key={l} value={l}>
@@ -295,7 +307,7 @@ export default function Directory({ initialQuery = "" }: { initialQuery?: string
           </select>
         </label>
 
-        <div className="directory-count">
+        <div className="self-center text-[0.9rem] text-[var(--ink-soft)] md:justify-self-end">
           {loading
             ? "Lade…"
             : pagination?.total
@@ -305,10 +317,10 @@ export default function Directory({ initialQuery = "" }: { initialQuery?: string
       </div>
 
       {err ? (
-        <div className="directory-error">Fehler: {err}</div>
+        <div className="rounded-xl border border-[#ee9ab7] bg-[#fff1f6] p-3 text-[#900]">Fehler: {err}</div>
       ) : null}
 
-      <div className="directory-grid">
+      <div className="grid gap-[14px]">
         {items.map((p) => {
           const pic =
             p.EmployeePicture?.formats?.small?.url ||
@@ -327,10 +339,13 @@ export default function Directory({ initialQuery = "" }: { initialQuery?: string
           const orgPreview = formatOrgPreview(p.Organizations);
 
           return (
-            <details key={p.id} className="person-card">
-              <summary className="person-summary">
-                <div className="person-head">
-                  <div className="person-avatar">
+            <details
+              key={p.id}
+              className="overflow-hidden rounded-2xl border border-[var(--card-border)] bg-white shadow-[0_10px_24px_rgba(15,23,42,0.08)] transition hover:-translate-y-0.5 hover:shadow-[0_22px_44px_rgba(15,23,42,0.12)]"
+            >
+              <summary className="grid cursor-pointer list-none gap-3 p-4 marker:content-none [&::-webkit-details-marker]:hidden md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+                <div className="grid justify-self-start grid-cols-[auto_1fr] items-center gap-[14px]">
+                  <div className="grid h-14 w-14 place-items-center overflow-hidden rounded-xl border border-[var(--card-border)] bg-[#f2f3f5]">
                     {pic ? (
                       <Image
                         src={pic}
@@ -338,16 +353,16 @@ export default function Directory({ initialQuery = "" }: { initialQuery?: string
                         width={56}
                         height={56}
                         sizes="56px"
-                        className="person-avatar-image"
+                        className="h-full w-full object-cover"
                         unoptimized
                       />
                     ) : (
-                      <div className="person-avatar-fallback">{fmtName(p)[0]}</div>
+                      <div className="text-[20px] font-bold text-[var(--accent)]">{fmtName(p)[0]}</div>
                     )}
                   </div>
-                  <div className="person-title">
-                    <div className="person-name">{highlightText(fmtName(p), q)}</div>
-                    <div className="person-meta">
+                  <div className="grid gap-1">
+                    <div className="text-[1.05rem] font-bold text-[var(--ink)]">{highlightText(fmtName(p), q)}</div>
+                    <div className="text-[0.9rem] text-[var(--ink-soft)]">
                       {previewPhone?.Number ? (
                         <>
                           📞 {highlightText(previewPhone.Number, q)}
@@ -361,98 +376,114 @@ export default function Directory({ initialQuery = "" }: { initialQuery?: string
                       {webexLink ? <> · 💬 Webex</> : null}
                     </div>
                     {sekretariatPreview ? (
-                      <div className="person-meta person-meta-extra">Sekretariat: {sekretariatPreview}</div>
+                      <div className="mt-0.5 text-[0.85rem] text-[var(--ink-soft)]">Sekretariat: {sekretariatPreview}</div>
                     ) : null}
                     {orgPreview ? (
-                      <div className="person-meta person-meta-extra">Organisation: {highlightText(orgPreview, q)}</div>
+                      <div className="mt-0.5 text-[0.85rem] text-[var(--ink-soft)]">Organisation: {highlightText(orgPreview, q)}</div>
                     ) : null}
                   </div>
                 </div>
-                <div className="person-toggle">Details</div>
+                <div className="w-fit rounded-full bg-[var(--accent-soft)] px-3 py-1.5 text-[0.85rem] font-semibold tracking-[0.01em] text-[var(--accent)]">
+                  Details
+                </div>
               </summary>
 
-              <div className="person-body">
-                <div className="person-section-grid">
-                  <section className="person-section">
-                    <h4>💬 Chat</h4>
+              <div className="border-t border-[var(--card-border)] bg-[#fbfbfc] px-4 pb-[18px] pt-[10px]">
+                <div className="mb-[14px] grid gap-4 md:grid-cols-[repeat(auto-fit,minmax(220px,1fr))]">
+                  <section>
+                    <h4 className="mb-2 mt-1 text-[0.9rem] tracking-[0.04em] text-[var(--muted)]">💬 Chat</h4>
                     {webexLink ? (
-                      <ul>
-                        <li>
-                          <a href={webexLink}>Webex-Chat öffnen</a>
+                      <ul className="m-0 list-disc pl-[18px]">
+                        <li className="text-[#2f3640]">
+                          <a className="text-[var(--accent)] no-underline hover:underline" href={webexLink}>
+                            Webex-Chat öffnen
+                          </a>
                         </li>
                       </ul>
                     ) : (
-                      <div className="empty">Kein Webex hinterlegt</div>
+                      <div className="opacity-60">Kein Webex hinterlegt</div>
                     )}
                   </section>
 
-                  <section className="person-section">
-                    <h4>📞 Telefon</h4>
+                  <section>
+                    <h4 className="mb-2 mt-1 text-[0.9rem] tracking-[0.04em] text-[var(--muted)]">📞 Telefon</h4>
                     {(p.Phone || []).length ? (
-                      <ul>
+                      <ul className="m-0 list-disc pl-[18px]">
                         {(p.Phone || []).map((ph, idx) => {
                           const label = formatContactLabel(ph?.Label, "Telefon");
                           const number = ph?.Number || "";
                           const telHref = number ? `tel:${number.replace(/\s/g, "")}` : "#";
                           return (
-                            <li key={idx}>
-                              <span>{label}:</span>{" "}
-                              {number ? <a href={telHref}>{highlightText(number, q)}</a> : <em>—</em>}
+                            <li key={idx} className="mb-1.5 text-[#2f3640]">
+                              <span className="text-[var(--muted)]">{label}:</span>{" "}
+                              {number ? (
+                                <a className="text-[var(--accent)] no-underline hover:underline" href={telHref}>
+                                  {highlightText(number, q)}
+                                </a>
+                              ) : (
+                                <em>—</em>
+                              )}
                             </li>
                           );
                         })}
                       </ul>
                     ) : (
-                      <div className="empty">Keine Nummern</div>
+                      <div className="opacity-60">Keine Nummern</div>
                     )}
                   </section>
 
-                  <section className="person-section">
-                    <h4>✉️ E‑Mail</h4>
+                  <section>
+                    <h4 className="mb-2 mt-1 text-[0.9rem] tracking-[0.04em] text-[var(--muted)]">✉️ E‑Mail</h4>
                     {(p.Mail || []).length ? (
-                      <ul>
+                      <ul className="m-0 list-disc pl-[18px]">
                         {(p.Mail || []).map((m, idx) => {
                           const label = formatContactLabel(m?.Label, "E-Mail");
                           const addr = m?.Address || "";
                           const mailHref = addr ? `mailto:${addr}` : "#";
                           return (
-                            <li key={idx}>
-                              <span>{label}:</span>{" "}
-                              {addr ? <a href={mailHref}>{addr}</a> : <em>—</em>}
+                            <li key={idx} className="mb-1.5 text-[#2f3640]">
+                              <span className="text-[var(--muted)]">{label}:</span>{" "}
+                              {addr ? (
+                                <a className="text-[var(--accent)] no-underline hover:underline" href={mailHref}>
+                                  {addr}
+                                </a>
+                              ) : (
+                                <em>—</em>
+                              )}
                             </li>
                           );
                         })}
                       </ul>
                     ) : (
-                      <div className="empty">Keine E‑Mails</div>
+                      <div className="opacity-60">Keine E‑Mails</div>
                     )}
                   </section>
 
-                  <section className="person-section">
-                    <h4>🏠 Adresse</h4>
+                  <section>
+                    <h4 className="mb-2 mt-1 text-[0.9rem] tracking-[0.04em] text-[var(--muted)]">🏠 Adresse</h4>
                     {(p.Address || []).length ? (
-                      <ul>
+                      <ul className="m-0 list-disc pl-[18px]">
                         {(p.Address || []).map((a, idx) => {
                           const label = a?.Label || "Adresse";
                           const text = fmtAddress(a);
                           return (
-                            <li key={idx}>
-                              <span>{label}:</span> {text ? <span>{text}</span> : <em>—</em>}
+                            <li key={idx} className="mb-1.5 text-[#2f3640]">
+                              <span className="text-[var(--muted)]">{label}:</span> {text ? <span>{text}</span> : <em>—</em>}
                             </li>
                           );
                         })}
                       </ul>
                     ) : (
-                      <div className="empty">Keine Adressen</div>
+                      <div className="opacity-60">Keine Adressen</div>
                     )}
                   </section>
                 </div>
 
-                <div className="person-section-grid person-section-grid-extra">
+                <div className="grid gap-4 border-t border-dashed border-[var(--card-border)] pt-[10px] md:grid-cols-[repeat(auto-fit,minmax(220px,1fr))]">
                   {(p.Secretariats || []).length ? (
-                    <section className="person-section">
-                      <h4>🧑‍💼 Sekretariat</h4>
-                      <div className="secretariat-list">
+                    <section>
+                      <h4 className="mb-2 mt-1 text-[0.9rem] tracking-[0.04em] text-[var(--muted)]">🧑‍💼 Sekretariat</h4>
+                      <div className="grid gap-2">
                         {(p.Secretariats || []).map((s, idx) => {
                           const secMails = (s.Mail || []).filter((m) => m?.Address);
                           const secPhones = (s.Phones || []).filter((ph) => ph?.Number);
@@ -465,42 +496,57 @@ export default function Directory({ initialQuery = "" }: { initialQuery?: string
                             .join(", ");
 
                           return (
-                            <article className="secretariat-card" key={s.documentId || s.id || idx}>
-                              <div className="secretariat-name">{s.Name || "(ohne Namen)"}</div>
-                              <div className="secretariat-lines">
+                            <article
+                              className="rounded-[10px] border border-[var(--card-border)] bg-white px-[10px] py-2"
+                              key={s.documentId || s.id || idx}
+                            >
+                              <div className="mb-1 font-[650]">{s.Name || "(ohne Namen)"}</div>
+                              <div className="grid gap-[3px] text-[0.9rem] text-[var(--ink-soft)]">
                                 {cardMail ? (
                                   <div>
-                                    <span>E‑Mail:</span> <a href={`mailto:${cardMail}`}>{cardMail}</a>
+                                    <span className="text-[var(--muted)]">E‑Mail:</span>{" "}
+                                    <a className="text-[var(--accent)] no-underline hover:underline" href={`mailto:${cardMail}`}>
+                                      {cardMail}
+                                    </a>
                                   </div>
                                 ) : null}
                                 {secMails.slice(1).map((m, i) => (
                                   <div key={`mail-${i}`}>
-                                    <span>{formatContactLabel(m?.Label, "E‑Mail")}:</span>{" "}
-                                    <a href={`mailto:${m?.Address}`}>{m?.Address}</a>
+                                    <span className="text-[var(--muted)]">{formatContactLabel(m?.Label, "E‑Mail")}:</span>{" "}
+                                    <a className="text-[var(--accent)] no-underline hover:underline" href={`mailto:${m?.Address}`}>
+                                      {m?.Address}
+                                    </a>
                                   </div>
                                 ))}
                                 {cardPhone ? (
                                   <div>
-                                    <span>Telefon:</span>{" "}
-                                    <a href={`tel:${cardPhone.replace(/\s/g, "")}`}>{cardPhone}</a>
+                                    <span className="text-[var(--muted)]">Telefon:</span>{" "}
+                                    <a className="text-[var(--accent)] no-underline hover:underline" href={`tel:${cardPhone.replace(/\s/g, "")}`}>
+                                      {cardPhone}
+                                    </a>
                                   </div>
                                 ) : null}
                                 {secPhones
                                   .filter((ph) => ph?.Number !== cardPhone)
                                   .map((ph, i) => (
                                     <div key={`phone-${i}`}>
-                                      <span>{formatContactLabel(ph?.Label, "Telefon")}:</span>{" "}
-                                      <a href={`tel:${(ph?.Number || "").replace(/\s/g, "")}`}>{ph?.Number}</a>
+                                      <span className="text-[var(--muted)]">{formatContactLabel(ph?.Label, "Telefon")}:</span>{" "}
+                                      <a
+                                        className="text-[var(--accent)] no-underline hover:underline"
+                                        href={`tel:${(ph?.Number || "").replace(/\s/g, "")}`}
+                                      >
+                                        {ph?.Number}
+                                      </a>
                                     </div>
                                   ))}
                                 {orgs ? (
                                   <div>
-                                    <span>Organisation:</span> {orgs}
+                                    <span className="text-[var(--muted)]">Organisation:</span> {orgs}
                                   </div>
                                 ) : null}
                                 {addresses[0] ? (
                                   <div>
-                                    <span>Adresse:</span> {addresses[0]}
+                                    <span className="text-[var(--muted)]">Adresse:</span> {addresses[0]}
                                   </div>
                                 ) : null}
                               </div>
@@ -511,15 +557,15 @@ export default function Directory({ initialQuery = "" }: { initialQuery?: string
                     </section>
                   ) : null}
 
-                  <section className="person-section">
-                    <h4>🏢 Organisation</h4>
+                  <section>
+                    <h4 className="mb-2 mt-1 text-[0.9rem] tracking-[0.04em] text-[var(--muted)]">🏢 Organisation</h4>
                     {(p.Organizations || []).length ? (
-                      <ul>
+                      <ul className="m-0 list-disc pl-[18px]">
                         {(p.Organizations || []).map((o, idx) => {
                           const isLeadership = Boolean((o.LeadershipRoles || []).length) || Boolean(o.LeadershipPrimary);
                           return (
-                            <li key={o.documentId || o.id || idx}>
-                              <span>
+                            <li key={o.documentId || o.id || idx} className="mb-1.5 text-[#2f3640]">
+                              <span className="text-[#2f3640]">
                                 {o.Name || o.ShortName || "(ohne Name)"}
                                 {isLeadership ? " (Leitung)" : ""}
                               </span>
@@ -528,14 +574,17 @@ export default function Directory({ initialQuery = "" }: { initialQuery?: string
                         })}
                       </ul>
                     ) : (
-                      <div className="empty">Keine Organisation hinterlegt</div>
+                      <div className="opacity-60">Keine Organisation hinterlegt</div>
                     )}
                   </section>
                 </div>
 
                 {p.documentId ? (
-                  <div className="person-actions person-actions-bottom">
-                    <Link href={`/contact/${p.documentId}`} className="person-link-button">
+                  <div className="mt-[14px] flex justify-end max-sm:justify-start">
+                    <Link
+                      href={`/contact/${p.documentId}`}
+                      className="inline-flex items-center justify-center gap-2 rounded-[10px] border border-[#d4ddd9] bg-white px-3 py-2 font-semibold text-[var(--ink)] no-underline hover:border-[var(--accent)] hover:text-[var(--accent)]"
+                    >
                       Profil öffnen
                     </Link>
                   </div>
@@ -547,34 +596,34 @@ export default function Directory({ initialQuery = "" }: { initialQuery?: string
       </div>
 
       {pagination ? (
-        <div className="pagination">
+        <div className="mx-auto mt-[22px] inline-flex flex-wrap items-center justify-center gap-2 rounded-[14px] border border-[var(--card-border)] bg-white p-2 shadow-[0_8px_18px_rgba(15,23,42,0.06)]">
           <button
-            className="pagination-btn"
+            className="cursor-pointer rounded-[10px] border border-[#dfe2e7] bg-white px-3 py-2 font-semibold text-[var(--ink)] disabled:cursor-not-allowed disabled:opacity-50"
             onClick={() => setPage(1)}
             disabled={pagination.page <= 1 || loading}
           >
             « Erste
           </button>
           <button
-            className="pagination-btn"
+            className="cursor-pointer rounded-[10px] border border-[#dfe2e7] bg-white px-3 py-2 font-semibold text-[var(--ink)] disabled:cursor-not-allowed disabled:opacity-50"
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={pagination.page <= 1 || loading}
           >
             ‹ Zurück
           </button>
-          <div className="pagination-info">
+          <div className="whitespace-nowrap px-1.5 text-[0.95rem] text-[var(--ink-soft)]">
             Seite {pagination.page}
             {pagination.pageCount ? ` von ${pagination.pageCount}` : ""}
           </div>
           <button
-            className="pagination-btn"
+            className="cursor-pointer rounded-[10px] border border-[#dfe2e7] bg-white px-3 py-2 font-semibold text-[var(--ink)] disabled:cursor-not-allowed disabled:opacity-50"
             onClick={() => setPage((p) => p + 1)}
             disabled={pagination.pageCount ? pagination.page >= pagination.pageCount : loading}
           >
             Weiter ›
           </button>
           <button
-            className="pagination-btn"
+            className="cursor-pointer rounded-[10px] border border-[#dfe2e7] bg-white px-3 py-2 font-semibold text-[var(--ink)] disabled:cursor-not-allowed disabled:opacity-50"
             onClick={() => pagination.pageCount && setPage(pagination.pageCount)}
             disabled={!pagination.pageCount || pagination.page >= pagination.pageCount || loading}
           >
