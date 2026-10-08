@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { createHash } from "node:crypto";
 
 const STRAPI_URL = process.env.STRAPI_URL!;
 const STRAPI_TOKEN = process.env.STRAPI_TOKEN || "";
@@ -42,6 +41,7 @@ export type Secretariat = {
   documentId?: string | null;
   Name?: string | null;
   MailIdentifier?: string | null;
+  LDAPActive?: boolean | null;
   Email?: string | null;
   Phone?: string | null;
   Phones?: Phone[] | null;
@@ -76,10 +76,11 @@ export type Person = {
   Firstname?: string | null;
   Lastname?: string | null;
   MailIdentifier?: string | null;
+  LDAPActive?: boolean | null;
   ORCID?: string | null;
+  Location?: string | null;
   WebexEnabled?: boolean | null;
   WebexEmail?: string | null;
-  Secret?: string | null;
   Phone?: Phone[] | null;
   Mail?: Mail[] | null;
   Address?: Address[] | null;
@@ -329,7 +330,7 @@ async function strapiFetchJson(path: string, init?: RequestInit) {
   return response.json();
 }
 
-function buildPersonPopulateParams(includeSecret: boolean) {
+function buildPersonPopulateParams() {
   const sp = new URLSearchParams();
   sp.set("status", "draft");
   sp.set("populate[Phone]", "*");
@@ -346,21 +347,10 @@ function buildPersonPopulateParams(includeSecret: boolean) {
   sp.set("populate[OrganizationLeadershipLinks][fields][2]", "SortOrder");
   sp.set("populate[OrganizationLeadershipLinks][populate][Organization][fields][0]", "Name");
   sp.set("populate[OrganizationLeadershipLinks][populate][Organization][fields][1]", "ShortName");
-  if (includeSecret) {
-    sp.set("fields[0]", "Secret");
-    sp.set("fields[1]", "Title");
-    sp.set("fields[2]", "Firstname");
-    sp.set("fields[3]", "Lastname");
-    sp.set("fields[4]", "MailIdentifier");
-    sp.set("fields[5]", "ORCID");
-    sp.set("fields[6]", "WebexEnabled");
-    sp.set("fields[7]", "WebexEmail");
-    sp.set("fields[8]", "documentId");
-  }
   return sp;
 }
 
-function normalizePerson(input: any, includeSecret: boolean): Person {
+function normalizePerson(input: any): Person {
   const attrs = input?.attributes ?? input;
   const secretariats = (attrs.Secretariats ?? attrs.secretariats ?? [])
     .map((s: any) => normalizePersonRef(s))
@@ -383,10 +373,11 @@ function normalizePerson(input: any, includeSecret: boolean): Person {
     Firstname: attrs.Firstname ?? attrs.firstname ?? null,
     Lastname: attrs.Lastname ?? attrs.lastname ?? null,
     MailIdentifier: attrs.MailIdentifier ?? attrs.mailIdentifier ?? null,
+    LDAPActive: attrs.LDAPActive ?? attrs.ldapActive ?? true,
     ORCID: attrs.ORCID ?? attrs.orcid ?? null,
+    Location: attrs.Location ?? attrs.location ?? null,
     WebexEnabled: Boolean(attrs.WebexEnabled ?? attrs.webexEnabled),
     WebexEmail: attrs.WebexEmail ?? attrs.webexEmail ?? null,
-    Secret: includeSecret ? attrs.Secret ?? attrs.secret ?? null : null,
     Phone: attrs.Phone ?? attrs.phone ?? [],
     Mail: attrs.Mail ?? attrs.mail ?? [],
     Address: attrs.Address ?? attrs.address ?? [],
@@ -416,32 +407,22 @@ async function fetchPublicationsForPerson(documentId: string) {
   return list;
 }
 
-export async function fetchPersonByDocumentId(documentId: string, options?: { includeSecret?: boolean }) {
-  const includeSecret = Boolean(options?.includeSecret);
-  const sp = buildPersonPopulateParams(includeSecret);
+export async function fetchPersonByDocumentId(documentId: string) {
+  const sp = buildPersonPopulateParams();
   const json = await strapiFetchJson(`/api/people/${documentId}?${sp.toString()}`);
   const raw = json.data ? unwrapEntity(json.data) : unwrapEntity(json);
   if (!raw) return null;
-  const person = normalizePerson(raw, includeSecret);
+  const person = normalizePerson(raw);
+  if (person.LDAPActive === false) return null;
   person.Publications = await fetchPublicationsForPerson(documentId);
   return person;
-}
-
-export async function updatePersonSecret(documentId: string, secretHash: string) {
-  await strapiFetchJson(`/api/people/${documentId}?status=draft`, {
-    method: "PUT",
-    body: JSON.stringify({
-      data: {
-        Secret: secretHash,
-      },
-    }),
-  });
 }
 
 export async function updatePersonSelfService(
   documentId: string,
   data: {
     ORCID?: string | null;
+    Location?: string | null;
     Phone?: Phone[];
     Mail?: Mail[];
     Address?: Address[];
@@ -494,8 +475,4 @@ export function findBusinessMail(person: Pick<Person, "Mail">) {
 
 export function formatPersonName(person: Pick<Person, "Title" | "Firstname" | "Lastname">) {
   return [person.Title, person.Firstname, person.Lastname].filter(Boolean).join(" ").trim() || "(ohne Namen)";
-}
-
-export function hashSecret(token: string) {
-  return createHash("sha256").update(token).digest("hex");
 }

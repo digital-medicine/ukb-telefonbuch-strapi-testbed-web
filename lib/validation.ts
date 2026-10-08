@@ -20,6 +20,7 @@ type Address = {
 
 export type SelfServicePayload = {
   ORCID?: string | null;
+  Location?: string | null;
   Phone?: Phone[] | null;
   Mail?: Mail[] | null;
   Address?: Address[] | null;
@@ -27,6 +28,7 @@ export type SelfServicePayload = {
 
 export type ValidationErrors = {
   orcid?: string;
+  location?: string;
   phones?: Record<number, string>;
   mails?: Record<number, string>;
   addresses?: Record<number, string>;
@@ -135,6 +137,8 @@ export function validateSelfServicePayload(payload: SelfServicePayload) {
   const errors: ValidationErrors = {};
 
   const orcid = normalizeOrcid(clean(payload.ORCID));
+  const location = clean(payload.Location);
+  if (location.length > 160) errors.location = "Der Standort darf höchstens 160 Zeichen lang sein.";
   if (orcid) {
     const compact = extractOrcidCompact(orcid);
     if (compact.length !== 16) {
@@ -216,12 +220,14 @@ export function validateSelfServicePayload(payload: SelfServicePayload) {
     errors,
     hasErrors: Boolean(
       errors.orcid ||
+        errors.location ||
         (errors.phones && Object.keys(errors.phones).length) ||
         (errors.mails && Object.keys(errors.mails).length) ||
         (errors.addresses && Object.keys(errors.addresses).length)
     ),
     sanitized: {
       ORCID: orcid || null,
+      Location: location || null,
       Phone: sanitizePhones(payload.Phone || []),
       Mail: sanitizeMails(payload.Mail || []),
       Address: sanitizeAddresses(payload.Address || []),

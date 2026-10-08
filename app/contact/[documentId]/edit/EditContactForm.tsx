@@ -11,10 +11,10 @@ import {
   canonicalizeContactLabel,
 } from "@/lib/contact-labels";
 import { COUNTRY_OPTIONS } from "@/lib/countries";
-import { normalizeOrcid, validateSelfServicePayload, type ValidationErrors } from "@/lib/validation";
+import { validateSelfServicePayload, type ValidationErrors } from "@/lib/validation";
 
-type Phone = { Label?: string | null; Number?: string | null };
-type Mail = { Label?: string | null; Address?: string | null };
+type Phone = { Label?: string | null; Number?: string | null; LDAPManaged?: boolean | null };
+type Mail = { Label?: string | null; Address?: string | null; LDAPManaged?: boolean | null };
 type Address = {
   Label?: string | null;
   StreetName?: string | null;
@@ -32,9 +32,9 @@ type Media = {
 
 type Props = {
   documentId: string;
-  token: string;
   initial: {
     ORCID?: string | null;
+    Location?: string | null;
     Phone?: Phone[] | null;
     Mail?: Mail[] | null;
     Address?: Address[] | null;
@@ -62,8 +62,7 @@ function emptyAddress(): Address {
   };
 }
 
-export default function EditContactForm({ documentId, token, initial }: Props) {
-  const normalizedInitialOrcid = normalizeOrcid(initial.ORCID || "");
+export default function EditContactForm({ documentId, initial }: Props) {
   const normalizedInitialPhones = (initial.Phone || []).map((entry) => ({
     ...entry,
     Label: canonicalizeContactLabel(entry?.Label, PHONE_LABEL_OPTIONS) || "",
@@ -77,13 +76,13 @@ export default function EditContactForm({ documentId, token, initial }: Props) {
     Label: canonicalizeContactLabel(entry?.Label, ADDRESS_LABEL_OPTIONS) || "",
   }));
   const normalizedInitialPayload = validateSelfServicePayload({
-    ORCID: normalizedInitialOrcid,
+    Location: initial.Location,
     Phone: normalizedInitialPhones,
     Mail: normalizedInitialMails,
     Address: normalizedInitialAddresses,
   }).sanitized;
 
-  const [orcid, setOrcid] = useState(normalizedInitialOrcid);
+  const [location, setLocation] = useState(initial.Location || "");
   const [phones, setPhones] = useState<Phone[]>(normalizedInitialPhones.length ? normalizedInitialPhones : [emptyPhone()]);
   const [mails, setMails] = useState<Mail[]>(normalizedInitialMails.length ? normalizedInitialMails : [emptyMail()]);
   const [addresses, setAddresses] = useState<Address[]>(
@@ -111,24 +110,17 @@ export default function EditContactForm({ documentId, token, initial }: Props) {
       : "w-full rounded-[10px] border border-[#d7dde4] bg-white px-3 py-2.5 text-[#111318] outline-none transition focus:border-[#1f6f5b] focus:ring-2 focus:ring-[rgba(31,111,91,0.18)]";
   }
 
-  function clearOrcidError() {
-    setValidationErrors((prev) => {
-      if (!prev.orcid) return prev;
-      return { ...prev, orcid: undefined };
-    });
-  }
-
   const currentSnapshot = useMemo(
     () =>
       JSON.stringify(
         validateSelfServicePayload({
-          ORCID: orcid,
+          Location: location,
           Phone: phones,
           Mail: mails,
           Address: addresses,
         }).sanitized
       ),
-    [addresses, mails, orcid, phones]
+    [addresses, location, mails, phones]
   );
 
   const isDirty = currentSnapshot !== baselineSnapshot;
@@ -146,7 +138,7 @@ export default function EditContactForm({ documentId, token, initial }: Props) {
     setValidationErrors({});
 
     const validation = validateSelfServicePayload({
-      ORCID: orcid,
+      Location: location,
       Phone: phones,
       Mail: mails,
       Address: addresses,
@@ -164,8 +156,7 @@ export default function EditContactForm({ documentId, token, initial }: Props) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          token,
-          ORCID: validation.sanitized.ORCID,
+          Location: validation.sanitized.Location,
           Phone: validation.sanitized.Phone,
           Mail: validation.sanitized.Mail,
           Address: validation.sanitized.Address,
@@ -200,7 +191,6 @@ export default function EditContactForm({ documentId, token, initial }: Props) {
 
     try {
       const body = new FormData();
-      body.append("token", token);
       body.append("file", photoFile);
 
       const response = await fetch(`/api/people/${encodeURIComponent(documentId)}/self-service-photo`, {
@@ -228,7 +218,7 @@ export default function EditContactForm({ documentId, token, initial }: Props) {
       <section className="rounded-[18px] border border-[var(--card-border)] bg-white p-[18px] shadow-[0_12px_28px_rgba(15,23,42,0.05)]">
         <div className="mb-[14px] grid gap-1.5">
           <h2 className="m-0 text-[#111318]">Kontaktdaten bearbeiten</h2>
-          <p className="m-0 text-[#4a4f5c]">Hier können E-Mail-Adressen, Telefonnummern, ORCID und Adressen gepflegt werden.</p>
+          <p className="m-0 text-[#4a4f5c]">Eigene Kontaktdaten können hier gepflegt werden. Mit „LDAP“ markierte Einträge werden zentral verwaltet und sind nicht änderbar.</p>
         </div>
       </section>
 
@@ -254,14 +244,20 @@ export default function EditContactForm({ documentId, token, initial }: Props) {
           </div>
           <div className="grid content-start gap-2.5">
             <label className="grid gap-1.5 text-[0.9rem] font-semibold text-[#4a4f5c]" htmlFor="profile-image">
-              Neues Bild wählen
+              Bilddatei auswählen
               <input
                 id="profile-image"
                 type="file"
                 accept="image/*"
-                className="w-full rounded-[10px] border border-[#d7dde4] bg-white px-3 py-2 text-[#111318] outline-none transition focus:border-[#1f6f5b] focus:ring-2 focus:ring-[rgba(31,111,91,0.18)]"
+                className="peer sr-only"
                 onChange={(e) => setPhotoFile(e.target.files?.[0] || null)}
               />
+              <span className="inline-flex w-fit cursor-pointer items-center rounded-[10px] border border-[#d7dde4] bg-white px-3 py-2.5 font-semibold text-[#182231] transition hover:border-[#1f6f5b] peer-focus-visible:ring-2 peer-focus-visible:ring-[#1f6f5b]">
+                Datei auswählen
+              </span>
+              <span className="max-w-full truncate font-normal text-[#596579]" aria-live="polite">
+                {photoFile?.name || "Keine Datei ausgewählt"}
+              </span>
             </label>
             <button
               type="button"
@@ -291,6 +287,7 @@ export default function EditContactForm({ documentId, token, initial }: Props) {
         <div className="grid gap-3">
           {phones.map((phone, index) => (
             <div className="grid gap-3 rounded-[14px] border border-[#e5e8ec] bg-[#fafbfc] p-[14px]" key={`phone-${index}`}>
+              {phone.LDAPManaged ? <p className="m-0 text-xs font-semibold text-[#66707f]">🔒 Durch LDAP verwaltet – Änderung und Entfernung sind deaktiviert.</p> : null}
               {validationErrors.phones?.[index] ? (
                 <p className="m-0 rounded-xl border border-[#e5a4a4] bg-[linear-gradient(180deg,#fff2f2,#ffe4e4)] px-[14px] py-3 text-[0.92rem] font-bold leading-[1.45] text-[#971c1c] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.45)]">{validationErrors.phones[index]}</p>
               ) : null}
@@ -299,6 +296,7 @@ export default function EditContactForm({ documentId, token, initial }: Props) {
                   <label className="text-[0.9rem] font-semibold text-[#4a4f5c]">Label</label>
                   <select
                     className={inputClassName(Boolean(validationErrors.phones?.[index]))}
+                    disabled={Boolean(phone.LDAPManaged)}
                     value={phone.Label || ""}
                     onChange={(e) =>
                       setPhones((prev) => prev.map((row, i) => (i === index ? { ...row, Label: e.target.value } : row)))
@@ -316,6 +314,7 @@ export default function EditContactForm({ documentId, token, initial }: Props) {
                   <label className="text-[0.9rem] font-semibold text-[#4a4f5c]">Nummer</label>
                   <input
                     className={inputClassName(Boolean(validationErrors.phones?.[index]))}
+                    disabled={Boolean(phone.LDAPManaged)}
                     type="tel"
                     inputMode="tel"
                     autoComplete="tel"
@@ -326,7 +325,7 @@ export default function EditContactForm({ documentId, token, initial }: Props) {
                   />
                 </div>
               </div>
-              <button type="button" className="inline-flex w-fit items-center justify-center rounded-[10px] border border-[#d4ddd9] bg-white px-3 py-2 font-semibold text-[#111318] transition hover:border-[var(--accent)] hover:text-[var(--accent)]" onClick={() => setPhones((prev) => prev.filter((_, i) => i !== index))}>
+              <button type="button" disabled={Boolean(phone.LDAPManaged)} className="inline-flex w-fit items-center justify-center rounded-[10px] border border-[#d4ddd9] bg-white px-3 py-2 font-semibold text-[#111318] transition hover:border-[var(--accent)] hover:text-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-50" onClick={() => setPhones((prev) => prev.filter((_, i) => i !== index))}>
                 Entfernen
               </button>
             </div>
@@ -344,6 +343,7 @@ export default function EditContactForm({ documentId, token, initial }: Props) {
         <div className="grid gap-3">
           {mails.map((mail, index) => (
             <div className="grid gap-3 rounded-[14px] border border-[#e5e8ec] bg-[#fafbfc] p-[14px]" key={`mail-${index}`}>
+              {mail.LDAPManaged ? <p className="m-0 text-xs font-semibold text-[#66707f]">🔒 Durch LDAP verwaltet – Änderung und Entfernung sind deaktiviert.</p> : null}
               {validationErrors.mails?.[index] ? (
                 <p className="m-0 rounded-xl border border-[#e5a4a4] bg-[linear-gradient(180deg,#fff2f2,#ffe4e4)] px-[14px] py-3 text-[0.92rem] font-bold leading-[1.45] text-[#971c1c] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.45)]">{validationErrors.mails[index]}</p>
               ) : null}
@@ -352,6 +352,7 @@ export default function EditContactForm({ documentId, token, initial }: Props) {
                   <label className="text-[0.9rem] font-semibold text-[#4a4f5c]">Label</label>
                   <select
                     className={inputClassName(Boolean(validationErrors.mails?.[index]))}
+                    disabled={Boolean(mail.LDAPManaged)}
                     value={mail.Label || ""}
                     onChange={(e) =>
                       setMails((prev) => prev.map((row, i) => (i === index ? { ...row, Label: e.target.value } : row)))
@@ -369,6 +370,7 @@ export default function EditContactForm({ documentId, token, initial }: Props) {
                   <label className="text-[0.9rem] font-semibold text-[#4a4f5c]">Adresse</label>
                   <input
                     className={inputClassName(Boolean(validationErrors.mails?.[index]))}
+                    disabled={Boolean(mail.LDAPManaged)}
                     type="email"
                     inputMode="email"
                     autoComplete="email"
@@ -380,12 +382,24 @@ export default function EditContactForm({ documentId, token, initial }: Props) {
                   />
                 </div>
               </div>
-              <button type="button" className="inline-flex w-fit items-center justify-center rounded-[10px] border border-[#d4ddd9] bg-white px-3 py-2 font-semibold text-[#111318] transition hover:border-[var(--accent)] hover:text-[var(--accent)]" onClick={() => setMails((prev) => prev.filter((_, i) => i !== index))}>
+              <button type="button" disabled={Boolean(mail.LDAPManaged)} className="inline-flex w-fit items-center justify-center rounded-[10px] border border-[#d4ddd9] bg-white px-3 py-2 font-semibold text-[#111318] transition hover:border-[var(--accent)] hover:text-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-50" onClick={() => setMails((prev) => prev.filter((_, i) => i !== index))}>
                 Entfernen
               </button>
             </div>
           ))}
         </div>
+      </section>
+
+      <section className="rounded-[18px] border border-[var(--card-border)] bg-white p-[18px] shadow-[0_12px_28px_rgba(15,23,42,0.05)]">
+        <h3 className="mb-1 mt-0 text-[#111318]">📍 Standort</h3>
+        <p className="mb-3 mt-0 text-sm text-[#66707f]">Zum Beispiel Gebäude und Zimmernummer.</p>
+        <label className="grid gap-1.5 text-[0.9rem] font-semibold text-[#4a4f5c]" htmlFor="person-location">Gebäude / Raum / Standort
+          <input id="person-location" value={location} maxLength={160} onChange={(event) => {
+            setLocation(event.target.value);
+            setValidationErrors((prev) => ({ ...prev, location: undefined }));
+          }} className={inputClassName(Boolean(validationErrors.location))} placeholder="z. B. Gebäude 26, Zimmer 2.122" />
+        </label>
+        {validationErrors.location && <p className="mb-0 mt-2 text-sm font-bold text-[#a52323]">{validationErrors.location}</p>}
       </section>
 
       <section className="rounded-[18px] border border-[var(--card-border)] bg-white p-[18px] shadow-[0_12px_28px_rgba(15,23,42,0.05)]">
@@ -506,33 +520,6 @@ export default function EditContactForm({ documentId, token, initial }: Props) {
               </button>
             </div>
           ))}
-        </div>
-      </section>
-
-      <section className="rounded-[18px] border border-[var(--card-border)] bg-white p-[18px] shadow-[0_12px_28px_rgba(15,23,42,0.05)]">
-        <div className="mb-[14px] flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
-          <h3 className="m-0 text-[#111318]">ORCID</h3>
-        </div>
-        <div className="grid gap-1.5">
-          <label className="text-[0.9rem] font-semibold text-[#4a4f5c]" htmlFor="orcid">
-            ORCID
-          </label>
-          <input
-            id="orcid"
-            className={inputClassName(Boolean(validationErrors.orcid))}
-            value={orcid}
-            onChange={(e) => {
-              setOrcid(e.target.value);
-              clearOrcidError();
-            }}
-            onBlur={() => setOrcid((current) => normalizeOrcid(current))}
-            inputMode="text"
-            autoCapitalize="off"
-            autoCorrect="off"
-            spellCheck={false}
-            placeholder="0000-0000-0000-0000"
-          />
-          {validationErrors.orcid ? <p className="mt-0.5 text-[0.88rem] leading-[1.35] text-[#a32222]">{validationErrors.orcid}</p> : null}
         </div>
       </section>
 

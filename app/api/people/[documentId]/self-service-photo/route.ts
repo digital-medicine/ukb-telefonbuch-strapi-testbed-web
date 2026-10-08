@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 
-import { fetchPersonByDocumentId, hashSecret } from "@/lib/people";
+import { requestCanEditPerson } from "@/lib/ldap-person";
 
 const STRAPI_URL = process.env.STRAPI_URL!;
 const STRAPI_TOKEN = process.env.STRAPI_TOKEN || "";
@@ -20,20 +20,18 @@ export async function POST(
 ) {
   const { documentId } = await context.params;
   const formData = await req.formData().catch(() => null);
-  const token = clean(formData?.get("token"));
   const file = formData?.get("file");
 
-  if (!documentId || !token || !(file instanceof File)) {
-    return Response.json({ error: "Missing documentId, token or file" }, { status: 400 });
+  if (!documentId || !(file instanceof File)) {
+    return Response.json({ error: "Missing documentId or file" }, { status: 400 });
   }
 
   if (!file.type.startsWith("image/")) {
     return Response.json({ error: "Only image uploads are supported" }, { status: 400 });
   }
 
-  const person = await fetchPersonByDocumentId(documentId, { includeSecret: true });
-  if (!person?.Secret || hashSecret(token) !== person.Secret) {
-    return Response.json({ error: "Invalid edit token" }, { status: 403 });
+  if (!(await requestCanEditPerson(req, documentId))) {
+    return Response.json({ error: "LDAP-Anmeldung für diese Person erforderlich." }, { status: 403 });
   }
 
   try {

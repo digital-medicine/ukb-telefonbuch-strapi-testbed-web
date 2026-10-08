@@ -1,14 +1,15 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest } from "next/server";
 
-import { fetchPersonByDocumentId, hashSecret } from "@/lib/people";
+import { requestCanEditPerson } from "@/lib/ldap-person";
 import { validateSelfServicePayload } from "@/lib/validation";
 
 const STRAPI_URL = process.env.STRAPI_URL!;
 const STRAPI_TOKEN = process.env.STRAPI_TOKEN || "";
 
 type Payload = {
-  token?: string;
   ORCID?: string | null;
+  Location?: string | null;
   Phone?: Array<{ Label?: string | null; Number?: string | null }>;
   Mail?: Array<{ Label?: string | null; Address?: string | null }>;
   Address?: Array<{
@@ -22,8 +23,26 @@ type Payload = {
   }>;
 };
 
-function clean(value: unknown) {
-  return value == null ? "" : String(value).trim();
+function contactKey(row: any, fields: string[]) {
+  return fields.map((field) => String(row?.[field] ?? "").trim().toLowerCase()).join("\u0000");
+}
+
+function mergeLdapContacts(submitted: any[], current: any[], fields: string[]) {
+  const incoming = Array.isArray(submitted) ? submitted : [];
+  const existing = Array.isArray(current) ? current : [];
+  const managed = existing.filter((row) => row?.LDAPManaged !== false);
+  const used = new Set<number>();
+  const merged: any[] = [];
+  for (const row of managed) {
+    const index = incoming.findIndex((candidate, i) => !used.has(i) && contactKey(candidate, fields) === contactKey(row, fields));
+    if (index < 0) return null;
+    used.add(index);
+    merged.push({ ...row, ...Object.fromEntries(fields.map((field) => [field, row[field] ?? null])), LDAPManaged: true });
+  }
+  incoming.forEach((row, index) => {
+    if (!used.has(index)) merged.push({ ...row, LDAPManaged: false });
+  });
+  return merged;
 }
 
 function authHeaders(): Record<string, string> {
@@ -37,19 +56,37 @@ export async function POST(
 ) {
   const { documentId } = await context.params;
   const body = (await req.json().catch(() => null)) as Payload | null;
-  const token = clean(body?.token);
-
-  if (!documentId || !token) {
-    return Response.json({ error: "Missing documentId or token" }, { status: 400 });
+  if (!documentId) {
+    return Response.json({ error: "Missing documentId" }, { status: 400 });
+  }
+  if (!(await requestCanEditPerson(req, documentId))) {
+    return Response.json({ error: "LDAP-Anmeldung für diese Person erforderlich." }, { status: 403 });
   }
 
-  const person = await fetchPersonByDocumentId(documentId, { includeSecret: true });
-  if (!person?.Secret || hashSecret(token) !== person.Secret) {
-    return Response.json({ error: "Invalid edit token" }, { status: 403 });
+  // LDAP-owned contact fields may not be changed through self-service. ORCID
+  // editing is temporarily disabled and omitted from updates.
+  const currentQuery = new URLSearchParams({
+    status: "draft",
+    "fields[0]": "LDAPUsername",
+    "populate[Phone]": "*",
+    "populate[Mail]": "*",
+  });
+  const currentResponse = await fetch(
+    `${STRAPI_URL}/api/people/${encodeURIComponent(documentId)}?${currentQuery}`,
+    { headers: authHeaders(), cache: "no-store" }
+  );
+  if (!currentResponse.ok) {
+    console.error("Self-service person lookup failed", {
+      documentId,
+      status: currentResponse.status,
+      details: (await currentResponse.text().catch(() => "")).slice(0, 500),
+    });
+    return Response.json({ error: "Person konnte nicht geladen werden." }, { status: 502 });
   }
-
+  const currentJson = await currentResponse.json();
+  const current = currentJson?.data?.attributes ? { ...currentJson.data.attributes } : currentJson?.data || {};
   const validation = validateSelfServicePayload({
-    ORCID: body?.ORCID,
+    Location: body?.Location,
     Phone: body?.Phone,
     Mail: body?.Mail,
     Address: body?.Address,
@@ -57,6 +94,16 @@ export async function POST(
 
   if (validation.hasErrors) {
     return Response.json({ error: "Bitte Eingaben prüfen.", validation: validation.errors }, { status: 400 });
+  }
+
+  const protectedPhones = current.LDAPUsername
+    ? mergeLdapContacts(validation.sanitized.Phone, current.Phone, ["Label", "Number"])
+    : validation.sanitized.Phone;
+  const protectedMails = current.LDAPUsername
+    ? mergeLdapContacts(validation.sanitized.Mail, current.Mail, ["Label", "Address"])
+    : validation.sanitized.Mail;
+  if (protectedPhones === null || protectedMails === null) {
+    return Response.json({ error: "LDAP-importierte Telefon- und E-Mail-Einträge dürfen nicht geändert oder entfernt werden." }, { status: 403 });
   }
 
   try {
@@ -68,9 +115,9 @@ export async function POST(
       },
       body: JSON.stringify({
         data: {
-          ORCID: validation.sanitized.ORCID,
-          Phone: validation.sanitized.Phone,
-          Mail: validation.sanitized.Mail,
+          Location: validation.sanitized.Location,
+          Phone: protectedPhones,
+          Mail: protectedMails,
           Address: validation.sanitized.Address,
         },
       }),

@@ -37,6 +37,7 @@ function addTokenSearchFilters(sp: URLSearchParams, tokens: string[]) {
     sp.set(`${base}[6][Organizations][ShortName][$containsi]`, token);
     sp.set(`${base}[7][PrimaryOrganization][Name][$containsi]`, token);
     sp.set(`${base}[8][PrimaryOrganization][ShortName][$containsi]`, token);
+    sp.set(`${base}[9][Location][$containsi]`, token);
   });
 }
 
@@ -57,6 +58,7 @@ function scorePersonMatch(person: any, tokens: string[], rawQuery: string) {
     normalizeSearchValue(org?.Name),
     normalizeSearchValue(org?.ShortName),
   ]);
+  const location = normalizeSearchValue(person.Location);
 
   let score = 0;
   const query = normalizeSearchValue(rawQuery);
@@ -68,6 +70,8 @@ function scorePersonMatch(person: any, tokens: string[], rawQuery: string) {
 
     if (identifier === query) score += 900;
     else if (identifier.includes(query)) score += 350;
+    if (location === query) score += 600;
+    else if (location.includes(query)) score += 250;
 
     for (const mail of mailValues) {
       if (!mail) continue;
@@ -94,6 +98,7 @@ function scorePersonMatch(person: any, tokens: string[], rawQuery: string) {
     else if (lastName.includes(token)) score += 120;
 
     if (identifier.includes(token)) score += 90;
+    if (location.includes(token)) score += 70;
 
     for (const mail of mailValues) {
       if (mail.includes(token)) score += 80;
@@ -214,6 +219,8 @@ function normalizePersonItem(it: any) {
     Firstname: attrs.Firstname ?? attrs.firstname ?? null,
     Lastname: attrs.Lastname ?? attrs.lastname ?? null,
     MailIdentifier: attrs.MailIdentifier ?? attrs.mailIdentifier ?? null,
+    LDAPActive: attrs.LDAPActive ?? attrs.ldapActive ?? true,
+    Location: attrs.Location ?? attrs.location ?? null,
     WebexEnabled: Boolean(attrs.WebexEnabled ?? attrs.webexEnabled),
     WebexEmail: attrs.WebexEmail ?? attrs.webexEmail ?? null,
     Phone: attrs.Phone ?? attrs.phone ?? [],
@@ -415,6 +422,7 @@ export async function GET(req: NextRequest) {
   sp.set("populate[OrganizationLeadershipLinks][populate][Organization][fields][1]", "ShortName");
   sp.set("pagination[page]", String(page));
   sp.set("pagination[pageSize]", String(pageSize));
+  sp.set("filters[LDAPActive][$ne]", "false");
   sp.set("sort", sort);
 
   if (identifier) {

@@ -75,6 +75,7 @@ type Person = {
   Firstname?: string | null;
   Lastname?: string | null;
   MailIdentifier?: string | null;
+  Location?: string | null;
   WebexEnabled?: boolean | null;
   WebexEmail?: string | null;
   Phone?: Phone[] | null;
@@ -375,6 +376,7 @@ export default function Directory({ initialQuery = "" }: { initialQuery?: string
                       {(p.Address || []).length ? `${(p.Address || []).length} Adresse` : "keine Adressen"}
                       {webexLink ? <> · 💬 Webex</> : null}
                     </div>
+                    {p.Location ? <div className="mt-0.5 text-[0.85rem] text-[var(--ink-soft)]">📍 {highlightText(p.Location, q)}</div> : null}
                     {sekretariatPreview ? (
                       <div className="mt-0.5 text-[0.85rem] text-[var(--ink-soft)]">Sekretariat: {sekretariatPreview}</div>
                     ) : null}

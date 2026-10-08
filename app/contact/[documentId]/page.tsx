@@ -2,7 +2,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import EditLinkButton from "./EditLinkButton";
 import { fetchPersonByDocumentId, findBusinessMail, formatPersonName } from "@/lib/people";
 
 function formatContactLabel(label?: string | null, fallback = "Kontakt") {
@@ -84,9 +83,6 @@ export default async function ContactDetailPage({
           Zurück zum Telefonbuch
         </Link>
         <h1 className="m-0 text-[clamp(2rem,3vw,2.8rem)] tracking-[-0.02em] text-[#111318]">{formatPersonName(person)}</h1>
-        <p className="m-0 max-w-[60ch] text-[#4a4f5c]">
-          Kontaktdetails, Organisationen und Publikationen für diesen Eintrag.
-        </p>
       </div>
 
       <section className="mb-[22px]">
@@ -124,7 +120,6 @@ export default async function ContactDetailPage({
               {addressCount ? <span className="inline-flex items-center rounded-full border border-[#dce4e1] bg-[rgba(255,255,255,0.9)] px-[10px] py-[7px] text-[0.88rem] font-semibold text-[#2f3640]">{addressCount} Adressen</span> : null}
             </div>
 
-            {businessMail ? <div className="flex items-start"><EditLinkButton documentId={documentId} /></div> : null}
           </div>
         </div>
       </section>
@@ -134,7 +129,6 @@ export default async function ContactDetailPage({
           <div className="rounded-[18px] border border-[var(--card-border)] bg-[linear-gradient(180deg,#ffffff,#fcfcfd)] p-5 text-[#111318] shadow-[0_12px_28px_rgba(15,23,42,0.05)]">
             <div className="mb-[14px] grid gap-1">
               <h3 className="m-0 text-[1.02rem] tracking-[-0.01em] text-[#111318]">🧑‍💼 Sekretariat</h3>
-              <p className="m-0 text-[0.92rem] text-[#66707f]">Kontaktpunkte und zugehörige Organisationen des Sekretariats.</p>
             </div>
             <div className="grid gap-3">
               {(person.Secretariats || []).map((secretariat, index) => {
@@ -169,7 +163,6 @@ export default async function ContactDetailPage({
         <div className="rounded-[18px] border border-[var(--card-border)] bg-[linear-gradient(180deg,#ffffff,#fcfcfd)] p-5 text-[#111318] shadow-[0_12px_28px_rgba(15,23,42,0.05)]">
           <div className="mb-[14px] grid gap-1">
             <h3 className="m-0 text-[1.02rem] tracking-[-0.01em] text-[#111318]">📞 Telefon</h3>
-            <p className="m-0 text-[0.92rem] text-[#66707f]">Alle hinterlegten Rufnummern dieser Person.</p>
           </div>
           {(person.Phone || []).length ? (
             <div className="grid gap-3">
@@ -192,7 +185,6 @@ export default async function ContactDetailPage({
         <div className="rounded-[18px] border border-[var(--card-border)] bg-[linear-gradient(180deg,#ffffff,#fcfcfd)] p-5 text-[#111318] shadow-[0_12px_28px_rgba(15,23,42,0.05)]">
           <div className="mb-[14px] grid gap-1">
             <h3 className="m-0 text-[1.02rem] tracking-[-0.01em] text-[#111318]">✉️ E-Mail</h3>
-            <p className="m-0 text-[0.92rem] text-[#66707f]">Direkte Kontaktadressen mit Mail-Links.</p>
           </div>
           {(person.Mail || []).length ? (
             <div className="grid gap-3">
@@ -215,8 +207,8 @@ export default async function ContactDetailPage({
         <div className="rounded-[18px] border border-[var(--card-border)] bg-[linear-gradient(180deg,#ffffff,#fcfcfd)] p-5 text-[#111318] shadow-[0_12px_28px_rgba(15,23,42,0.05)]">
           <div className="mb-[14px] grid gap-1">
             <h3 className="m-0 text-[1.02rem] tracking-[-0.01em] text-[#111318]">🏠 Adressen</h3>
-            <p className="m-0 text-[0.92rem] text-[#66707f]">Postadressen in vollständiger, lesbarer Darstellung.</p>
           </div>
+          {person.Location ? <div className="mb-3 rounded-[14px] border border-[#e6eaef] bg-[linear-gradient(180deg,#fdfefe,#f7fafb)] px-4 py-3 text-sm text-[#2f3640]"><span className="mr-2 font-semibold">📍 Standort</span>{person.Location}</div> : null}
           {(person.Address || []).length ? (
             <div className="grid gap-3">
               {(person.Address || []).map((entry, index) => (
@@ -240,7 +232,6 @@ export default async function ContactDetailPage({
         <div className="rounded-[18px] border border-[var(--card-border)] bg-[linear-gradient(180deg,#ffffff,#fcfcfd)] p-5 text-[#111318] shadow-[0_12px_28px_rgba(15,23,42,0.05)]">
           <div className="mb-[14px] grid gap-1">
             <h3 className="m-0 text-[1.02rem] tracking-[-0.01em] text-[#111318]">🏢 Organisationen</h3>
-            <p className="m-0 text-[0.92rem] text-[#66707f]">Zuordnungen, Primärorganisation und Leitungsfunktionen.</p>
           </div>
           {(person.Organizations || []).length ? (
             <ul className="grid list-none gap-3 p-0 [grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
